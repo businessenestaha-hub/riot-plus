@@ -12,6 +12,9 @@
 #   LTK Manager: eskisi gibi; kendi eklediğin modlar, seçimi Riot Plus LTK'ya yazar.
 #   Rose: Rose'u Riot Plus başlatır / durdurur; Rose LTK'yı kendisi sürdüğü için bu kipte Riot Plus LTK'ya dokunmaz.
 #   İkisi aynı anda çalışmaz: Rose yalnız kendi açtığı LTK'yı kullanabilir ve her maçta LTK'daki açık modları kapatır.
+#   "LoL'ü aç" (LoL kapalıyken) sorar: LTK Manager ile / Rose ile / düz. Düz ve LTK açılışında Rose kapatılır, client'taki
+#   eklenti kancası kaldırılır; kalkmazsa LoL açılmaz. Riot Plus açılırken Rose kendiliğinden başlatılmaz.
+#   Custom skinler > "Rose'a aktar": LTK'daki .fantome modları Rose'un custom skin klasörüne kopyalar.
 # Arayüz Türkçe / İngilizce: başlıktaki TR / EN (ayarlar.json "dil").
 #  Sorun mu var?  1 Ekrana gelmiyor   : yalnız client arayüzünü yeniden başlatır (giriş ve parti korunur)
 #                 2 Yüklemede kaldı   : maç başladı mı bakar; oyun penceresini tazeler ya da yeniden bağlar
@@ -777,6 +780,8 @@ function Calistir($islem) {
                 'customhazir' { Custom-Uygula -Hazirlik }
                 'customkapat' { Custom-Durdur }
                 'kaynak'      { Kaynak-Degistir }
+                'ackip'       { Lol-Kipli-Ac }
+                'roseaktar'   { Rose-Aktar }
                 'modekle'     { Mod-Ekle }
                 'ltkkur'      { Ltk-Kur }
                 'cokme'       { Cokme-Isle }
@@ -1316,6 +1321,7 @@ $script:LtkOtoZaman = [DateTime]::MinValue
 $script:CustomIstek = $null        # @{ '<şampiyon kimliği>' = modId ('' = klasik); 'diger:<modId>' = $true/$false }
 $script:EklenecekDosyalar = @()
 $script:KodId = $null
+$script:AcIstek = $null              # Lol-Kipli-Ac'ın açacağı kip ('ltk' | 'rose' | 'duz')
 $script:KaynakIstek = $null          # Kaynak-Degistir'in geçeceği kaynak ('ltk' | 'rose')
 $script:RoseDurum = @{ Kurulu = $false; Acik = $false }   # Rose-Durum-Oku doldurur
 
@@ -1356,23 +1362,43 @@ function Rose-Baslat {
     else { Yaz (T 'Rose açılmadı; kendi penceresinde ya da günlüğünde sebebi yazar.' "Rose didn't start; its own window or log says why.") $RenkTuruncu }
     return $acildi
 }
+# Rose, client'a eklentilerini Pengu Loader ile yükler: LeagueClientUx.exe için kayıt defterinde bir "Debugger" kancası.
+# Rose düzgün kapanınca kaldırır; sonlandırılır ya da çökerse kalır ve sonraki client açılışında eklentiler yine yüklenir.
+$PenguAnahtar = 'SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\LeagueClientUx.exe'
+function Pengu-Kancasi {
+    try {
+        $kok = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+        try {
+            $k = $kok.OpenSubKey($PenguAnahtar)
+            if (-not $k) { return $false }
+            try { return ("$($k.GetValue('Debugger'))" -match 'rundll32.*core\.dll') } finally { $k.Dispose() }
+        } finally { $kok.Dispose() }
+    } catch { return $false }
+}
+# Rose'u kapatır ve client'ta izini bırakmaz: süreç + Rose'un açtığı LTK sonlandırılır, Pengu kancası kaldırılır.
+# Rose kapalı ve kanca da yoksa bir şey yapmaz. $true = Rose kapalı ve kanca yok.
 function Rose-Durdur {
-    if (-not (Rose-Acik)) { return $true }
     if ($Deneme) { return $true }
+    $acik = Rose-Acik; $kanca = Pengu-Kancasi
+    if (-not $acik -and -not $kanca) { return $true }
     if (Rose-Mesgul-Faz) { Yaz (T 'Seçimde ya da maçtayken Rose durdurulmaz; maç bitince dene.' "Rose can't be stopped during champ select or a game; try after.") $RenkTuruncu; return $false }
-    # Tek yönetici izniyle: Rose + Rose'un açtığı LTK (o da yönetici) sonlandırılır, Pengu kancası kaldırılır
-    # (Rose kendi çıkışında kaldırırdı; sonlandırılınca kalır ve client eklentileri Rose'suz yüklemeye devam eder)
+    # Tek yönetici izniyle (Rose da açtığı LTK da yönetici olarak çalışır; kanca HKLM'de)
     $komut = 'taskkill /F /IM Rose.exe & taskkill /F /IM ltk-manager.exe & taskkill /F /IM ltk_patcher_host.exe'
     $pengu = Join-Path (Split-Path -Parent $RoseExe) '_internal\Pengu Loader\Pengu Loader.exe'
     if (Test-Path -LiteralPath $pengu) { $komut += " & `"$pengu`" --uninstall --silent" }
-    Yaz (T 'Rose yönetici olarak çalışıyor; kapatmak için Windows izin soracak.' 'Rose runs as administrator; Windows will ask for permission to close it.') $RenkSoluk
+    if ($kanca) { $komut += " & reg delete `"HKLM\$PenguAnahtar`" /v Debugger /f /reg:64" }
+    Yaz $(if ($acik) { T 'Rose yönetici olarak çalışıyor; kapatmak için Windows izin soracak.' 'Rose runs as administrator; Windows will ask for permission to close it.' }
+          else { T "Rose kapalı ama client'taki eklenti kancası kalmış; kaldırmak için Windows izin soracak." "Rose is closed but its plugin hook is still on the client; Windows will ask for permission to remove it." }) $RenkSoluk
     try { $p = Start-Process -FilePath 'cmd.exe' -ArgumentList "/s /c `"$komut`"" -Verb RunAs -WindowStyle Hidden -PassThru -ErrorAction Stop }
-    catch { Yaz (T "Yönetici izni verilmedi; Rose açık kaldı. Tepsideki Rose simgesinden Quit de diyebilirsin." "No admin rights given; Rose is still running. You can also Quit from Rose's tray icon.") $RenkTuruncu; return $false }
-    $son = [DateTime]::Now.AddSeconds(20)
+    catch { Yaz (T "Yönetici izni verilmedi; Rose'a dokunamadım. Tepsideki Rose simgesinden Quit de diyebilirsin." "No admin rights given; Rose was left as it is. You can also Quit from Rose's tray icon.") $RenkTuruncu; return $false }
+    $son = [DateTime]::Now.AddSeconds(25)
     while ([DateTime]::Now -lt $son -and -not $p.HasExited) { Bekle 0.3 }
     $son = [DateTime]::Now.AddSeconds(5)
     while ([DateTime]::Now -lt $son -and (Rose-Acik)) { Bekle 0.3 }
     if (Rose-Acik) { Yaz (T 'Rose kapanmadı; tepsideki Rose simgesinden Quit de.' "Rose didn't close; use Quit on Rose's tray icon.") $RenkTuruncu; return $false }
+    if (Pengu-Kancasi) { Yaz (T "Rose kapandı ama client'taki eklenti kancası kalkmadı; Rose'u bir kez açıp tepsiden Quit ile kapat." "Rose closed but its plugin hook is still on the client; open Rose once and Quit it from the tray.") $RenkTuruncu; return $false }
+    # Açık bir client eklentileri çoktan yüklemiştir; kanca kalksa da client yeniden başlayana dek içinde kalırlar
+    if (Surec 'LeagueClientUx') { Yaz (T "LoL açık: Rose'un eklentileri client kapanana kadar içinde kalır. Hesap değiştireceksen 'Hepsini kapat'la kapatıp yeniden aç." "LoL is open: Rose's plugins stay in the client until it closes. If you're switching accounts, use 'Close everything' and reopen.") $RenkTuruncu }
     return $true
 }
 # Rose'un LTK kütüphanesine kendi koyduğu girdiler (oyun için kurduğu ve sonraki maça sakladığı skinler). LTK kipinde
@@ -1391,6 +1417,8 @@ function Rose-Uygula([switch]$Hazirlik) {
     if (-not (Rose-Kurulu)) { Yaz (T 'Rose kurulu değil; Custom skinler sayfasından indirebilirsin.' 'Rose is not installed; get it from the Custom skins page.') $RenkTuruncu; Custom-Yenile; return }
     if (-not (Ltk-Kurulu)) { Yaz (T "Rose skinleri LTK Manager üzerinden uygular; önce LTK kurulmalı (kaynağı LTK'ya alıp kurabilirsin)." 'Rose applies skins through LTK Manager; install LTK first (switch the source to LTK to install it).') $RenkTuruncu; Custom-Yenile; return }
     if (Rose-Acik) { if (-not $Hazirlik) { Yaz (T 'Rose zaten çalışıyor.' 'Rose is already running.') $RenkSoluk }; Custom-Yenile; return }
+    # Riot Plus açılırken Rose kendiliğinden başlatılmaz: hangi hesapla gireceğin belli değil. Rose yalnız sen isteyince açılır.
+    if ($Hazirlik) { Yaz (T "Kaynak Rose ama Rose çalışmıyor. Açmak için: LoL'ü aç > Rose ile aç." "Source is Rose but Rose isn't running. To start: Open LoL > Open with Rose.") $RenkSoluk; Custom-Yenile; return }
     if (Rose-Mesgul-Faz) { Yaz (T 'Seçimde ya da maçtayken Rose başlatılmaz; maç bitince dene.' "Rose isn't started during champ select or a game; try after.") $RenkTuruncu; Custom-Yenile; return }
     if (Ltk-Acik) {
         Ltk-Durdur
@@ -1418,6 +1446,132 @@ function Kaynak-Degistir {
         if ($Ayar.custom) { Rose-Uygula }
         else { if (Ltk-Acik) { Ltk-Durdur }; Custom-Yenile }
     }
+}
+
+# "LoL'ü aç" seçenekleri (LoL kapalıyken): 'ltk' = kendi modlarınla, 'rose' = Rose ile, 'duz' = hiçbir şey yüklenmeden.
+# Her biri önce ötekini kapatır, sonra LoL'ü açar. Düz ve LTK açılışında Rose kapalı ve eklenti kancası kalkmış olmalı;
+# olmazsa LoL açılmaz (ana hesapta yanlışlıkla Rose'la girmeyesin diye).
+function Ac-Kipi { if (-not $Ayar.custom) { 'duz' } elseif (Rose-Kipi) { 'rose' } else { 'ltk' } }
+function Lol-Kapali { (-not $Deneme) -and -not @(Get-Process -Name 'LeagueClient', 'LeagueClientUx', 'League of Legends' -ErrorAction SilentlyContinue).Count }
+function Lol-Kipli-Ac {
+    $kip = "$($script:AcIstek)"; $script:AcIstek = $null
+    if (-not (Lol-Kapali)) { Lol-Ac; return }
+    switch ($kip) {
+        'rose' {
+            if (-not (Rose-Kurulu)) { Yaz (T 'Rose kurulu değil; Custom skinler sayfasından indirebilirsin.' 'Rose is not installed; get it from the Custom skins page.') $RenkTuruncu; return }
+            if (-not (Ltk-Kurulu)) { Yaz (T 'Rose skinleri LTK Manager üzerinden uygular; önce LTK kurulmalı.' 'Rose applies skins through LTK Manager; install LTK first.') $RenkTuruncu; return }
+            $Ayar.customKaynak = 'rose'; $Ayar.custom = $true; Ayar-Kaydet
+            $script:PatcherBekle = $null
+            Rose-Uygula
+            if (-not (Rose-Acik)) { Yaz (T "Rose açılmadı; LoL'ü açmadım." "Rose didn't start; LoL was not opened.") $RenkTuruncu; return }
+        }
+        'ltk' {
+            if (-not (Ltk-Kurulu)) { Yaz (T 'LTK Manager kurulu değil; Custom skinler sayfasından kurabilirsin.' 'LTK Manager is not installed; install it from Custom skins.') $RenkTuruncu; return }
+            if (-not (Rose-Durdur)) { Yaz (T "Rose tam kapanmadan LoL'ü açmıyorum." "Not opening LoL until Rose is fully closed.") $RenkTuruncu; Custom-Yenile; return }
+            $Ayar.customKaynak = 'ltk'; $Ayar.custom = $true; Ayar-Kaydet
+            $script:LtkBilinenAcik = $null; $script:CustomMacSon = 0; $script:CustomIstek = $null
+            Custom-Uygula
+        }
+        default {
+            if (-not (Rose-Durdur)) { Yaz (T "Rose tam kapanmadan LoL'ü açmıyorum." "Not opening LoL until Rose is fully closed.") $RenkTuruncu; Custom-Yenile; return }
+            if ($Ayar.custom) { $Ayar.custom = $false; Ayar-Kaydet }
+            Ltk-Durdur
+            if ((Ltk-Acik) -or (Ltk-Patcher)) { Yaz (T "LTK Manager kapanmadı; LoL'ü açmadım. Tepsiden LTK'yı kapatıp yeniden dene." "LTK Manager didn't close; LoL was not opened. Close LTK from the tray and try again.") $RenkTuruncu; Custom-Yenile; return }
+            Yaz (T 'Düz açıyorum: Rose ve LTK kapalı, oyuna hiçbir şey yüklenmiyor.' 'Opening plain: Rose and LTK are closed; nothing is loaded into the game.') $RenkSoluk
+        }
+    }
+    Custom-Yenile
+    Lol-Ac
+}
+
+# LTK'daki modları Rose'un custom skin klasörüne kopyalar; Rose'da o şampiyonun ilgili skininin üstünde seçilebilir olurlar.
+# Rose'un düzeni: %LOCALAPPDATA%\Rose\mods\skins\<şampiyon kimliği>000\<ad>.fantome + rose_mod_targets.json
+# (mods.<ad> = { name, targets = skin kimlikleri, ... }). Daha önce aktarılan (riotPlusLtkId) yeniden kopyalanmaz.
+function Rose-Dosya-Adi([string]$ad) {
+    $t = ($ad -replace '[\\/:*?"<>|\x00-\x1f]', ' ' -replace '\s+', ' ').Trim().Trim('.').Trim()
+    if (-not $t) { $t = 'mod' }
+    if ($t.Length -gt 80) { $t = $t.Substring(0, 80).Trim() }
+    return $t
+}
+function Rose-Aktar {
+    if (-not (Rose-Kurulu)) { Yaz (T 'Rose kurulu değil.' 'Rose is not installed.') $RenkTuruncu; return }
+    if (Rose-Mesgul-Faz) { Yaz (T 'Seçimde ya da maçtayken aktarılmaz; maç bitince dene.' 'Not during champ select or a game; try after.') $RenkTuruncu; return }
+    try { Ltk-Oku -Zorla } catch {}
+    if (-not $script:LtkKutuphane -or -not $script:LtkKutuphane.Modlar.Count) { Yaz (T "LTK'da aktarılacak mod yok." 'No mods in LTK to copy.') $RenkSoluk; return }
+    if ($Deneme) { Yaz "deneme: $($script:LtkKutuphane.Modlar.Count) mod Rose'a aktarılmadı" $RenkSoluk; return }
+    $kok = Join-Path $RoseVeri 'mods\skins'; $ltkMod = Join-Path $LtkVeri 'mods'
+    $eklendi = @(); $vardi = 0; $paket = @(); $sampiyonsuz = 0; $hata = @()
+    foreach ($m in @($script:LtkKutuphane.Modlar)) {
+        if ($m.Engelli) { continue }
+        if (-not $m.Ana) { $sampiyonsuz++; continue }
+        if ($m.Bicim -ne 'fantome') { $paket += $m.Ad; continue }
+        $kaynak = Join-Path $ltkMod "$($m.Slug).fantome"
+        $gecici = $null
+        try {
+            if (-not (Test-Path -LiteralPath $kaynak)) { throw 'dosya yok' }
+            $klasor = Join-Path $kok "$([int]$m.Ana * 1000)"
+            [void](New-Item -ItemType Directory -Force $klasor)
+            $manYol = Join-Path $klasor 'rose_mod_targets.json'
+            # Okunamayan manifestin üstüne yazılmaz (Rose'un oradaki modları kaybolurdu); hata sayılır
+            $man = if (Test-Path -LiteralPath $manYol) { Json-Oku $manYol } else { $null }
+            if (-not ($man -is [Collections.IDictionary])) { $man = New-Object 'Collections.Generic.Dictionary[string,object]' }
+            $modlar = $man['mods']
+            if (-not ($modlar -is [Collections.IDictionary])) { $modlar = New-Object 'Collections.Generic.Dictionary[string,object]'; $man['mods'] = $modlar }
+            $var = $false
+            foreach ($k in @($modlar.Keys)) {
+                $g = $modlar[$k]
+                if (($g -is [Collections.IDictionary]) -and "$($g['riotPlusLtkId'])" -eq $m.Id) {
+                    $gAd = if ("$($g['name'])") { "$($g['name'])" } else { "$k" }
+                    if (Test-Path -LiteralPath (Join-Path $klasor "$gAd.fantome")) { $var = $true } else { [void]$modlar.Remove($k) }
+                }
+            }
+            if ($var) { $vardi++; continue }
+            $taban = Rose-Dosya-Adi $m.Ad; $ad = $taban; $n = 2
+            while ($modlar.ContainsKey($ad) -or (Test-Path -LiteralPath (Join-Path $klasor "$ad.fantome"))) { $ad = "$taban ($n)"; $n++ }
+            $hedef = Join-Path $klasor "$ad.fantome"
+            $gecici = Join-Path $klasor ".riotplus-$([Guid]::NewGuid().ToString('N')).tmp"   # noktayla başlayanı Rose mod saymaz
+            Copy-Item -LiteralPath $kaynak -Destination $gecici -Force
+            # Rose, META/info.json'ı olan arşivi olduğu gibi alır; yoksa eklenir
+            $z = [IO.Compression.ZipFile]::Open($gecici, [IO.Compression.ZipArchiveMode]::Update)
+            try {
+                if (-not @($z.Entries | Where-Object { $_.FullName.Replace('\', '/').TrimStart('/') -ieq 'META/info.json' }).Count) {
+                    $e = $z.CreateEntry('META/info.json')
+                    $w = New-Object IO.StreamWriter($e.Open(), (New-Object Text.UTF8Encoding($false)))
+                    try { $w.Write($script:Json.Serialize(@{ Name = $m.Ad; Author = 'Unknown'; Version = '1.0.0'; Description = '' })) } finally { $w.Dispose() }
+                }
+            } finally { $z.Dispose() }
+            $ozet = (Get-FileHash -LiteralPath $gecici -Algorithm SHA256).Hash.ToLowerInvariant()
+            Move-Item -LiteralPath $gecici -Destination $hedef -Force; $gecici = $null
+            # Hedef skinler: modun yazdığı skin numaraları (okunamadıysa klasik); skin kimliği = şampiyon * 1000 + numara
+            $numaralar = @($m.Skinler | Where-Object { $null -ne $_ }); if (-not $numaralar.Count) { $numaralar = @(0) }
+            $girdi = New-Object 'Collections.Generic.Dictionary[string,object]'
+            $girdi['name'] = $ad
+            $girdi['displayName'] = $m.Ad
+            $girdi['targets'] = [object[]]@($numaralar | ForEach-Object { [int]$m.Ana * 1000 + [int]$_ })
+            $girdi['updatedAt'] = [Math]::Round(([DateTime]::UtcNow - [DateTime]'1970-01-01').TotalSeconds, 3)
+            $girdi['sourceHash'] = $ozet
+            $girdi['riotPlusLtkId'] = $m.Id
+            $modlar[$ad] = $girdi
+            $man['version'] = 1
+            if (-not $man.ContainsKey('championId')) { $man['championId'] = [int]$m.Ana }
+            if (-not $man.ContainsKey('targets')) { $man['targets'] = [object[]]@() }
+            Json-Yaz $manYol $man
+            try { [void][ModWad]::GorselCikar($kaynak, (Join-Path $klasor "$ad.png")) } catch {}   # Rose'un menüsündeki önizleme
+            $eklendi += "$($m.Ad) ($(Sampiyon-Adi $m.Ana))"
+        } catch {
+            $hata += "$($m.Ad): $($_.Exception.Message)"
+            if ($gecici) { Remove-Item -LiteralPath $gecici -Force -ErrorAction SilentlyContinue }
+        }
+    }
+    if ($eklendi.Count) { Yaz ((T "Rose'a aktarıldı ($($eklendi.Count)): " "Copied to Rose ($($eklendi.Count)): ") + ($eklendi -join ', ')) $RenkYesil }
+    elseif (-not $hata.Count) { Yaz (T "Rose'a aktarılacak yeni mod yok." 'Nothing new to copy to Rose.') $RenkSoluk }
+    $notlar = @()
+    if ($vardi) { $notlar += T "$vardi mod zaten aktarılmıştı" "$vardi already copied" }
+    if ($paket.Count) { $notlar += T "$($paket.Count) mod .modpkg biçiminde, onu Rose'un kendi menüsünden ekle ($($paket -join ', '))" "$($paket.Count) are .modpkg, add those from Rose's own menu ($($paket -join ', '))" }
+    if ($sampiyonsuz) { $notlar += T "$sampiyonsuz mod şampiyona bağlı değil, atlandı" "$sampiyonsuz aren't tied to a champion, skipped" }
+    if ($notlar.Count) { Yaz (($notlar -join '; ') + '.') $RenkSoluk }
+    if ($hata.Count) { Yaz ((T 'Aktarılamadı: ' "Couldn't copy: ") + ($hata -join '; ')) $RenkTuruncu }
+    if ($eklendi.Count) { Yaz (T "Rose'da: şampiyon seçiminde modun yazdığı skinin üstüne gel, custom menüsünden seç." "In Rose: hover the skin the mod targets in champ select and pick it from the custom menu.") $RenkSoluk }
 }
 
 function Rose-Durum-Oku { $script:RoseDurum = @{ Kurulu = (Rose-Kurulu); Acik = (Rose-Acik) } }
@@ -2662,6 +2816,7 @@ $PencereXaml = @'
                 <StackPanel Orientation="Horizontal">
                   <Button x:Name="ModEkle" Style="{StaticResource Kucuk}"/>
                   <Button x:Name="LtkAc" Style="{StaticResource Kucuk}" Margin="6,0,0,0"/>
+                  <Button x:Name="RoseAktar" Style="{StaticResource Kucuk}" Margin="6,0,0,0"/>
                 </StackPanel>
                 <TextBlock x:Name="LtkGuncelle" Style="{StaticResource Baglanti}" Foreground="#1FBF62" FontSize="12.5" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed"/>
               </Grid>
@@ -2713,7 +2868,7 @@ foreach ($ad in 'Kok', 'Kahraman', 'KahramanResim', 'KahramanKarart', 'KahramanA
                  'CustomAd', 'CustomNot', 'AnahtarCustom', 'CustomGorunum', 'CustomKaydir', 'CustomListe',
                  'ModEkle', 'LtkAc', 'LtkGuncelle', 'CustomBilgi', 'AnaSayfa', 'SampiyonKaydir', 'SampiyonSerit', 'GorselDugme',
                  'GuncelleSerit', 'GuncelleYazi', 'GuncelleBaglanti', 'SekmeHap', 'BaslikCam', 'DilTRKutu', 'DilENKutu', 'GorselCam', 'RakipYazi', 'RakipNot', 'AnahtarRakip', 'LtkKapatYazi', 'LtkKapatNot', 'AnahtarLtkKapat',
-                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt') {
+                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt', 'RoseAktar') {
     Set-Variable -Name $ad -Value (Bul $ad) -Scope Script
 }
 $Pencere.Title = $Baslik
@@ -3207,7 +3362,7 @@ $Sorunlar = @(
     @{ Islem = 'yukleme'; Tus = '2'; Tr = 'Yükleme ekranında kaldı'; En = 'Stuck on the loading screen'
        IpucuTr = 'Maç başladı mı bakar; oyun penceresini tazeler ya da yeniden bağlar.'; IpucuEn = 'Checks the match; refreshes the game window or reconnects.' }
     @{ Islem = 'ac';      Tus = '3'; Tr = "LoL'ü aç"; En = 'Open LoL'
-       IpucuTr = "Açıksa öne getirir; kapalıysa Riot Client'ta Oyna'ya basar."; IpucuEn = 'Brings it up if open; hits Play in Riot Client if closed.' }
+       IpucuTr = "Açıksa öne getirir. Kapalıysa sorar: LTK Manager ile, Rose ile ya da düz (hiçbir şey yüklenmeden)."; IpucuEn = 'Brings it up if open. If closed it asks: with LTK Manager, with Rose, or plain (nothing loaded).' }
     @{ Islem = 'kapat';   Tus = '4'; Tr = 'Hepsini kapat'; En = 'Close everything'
        IpucuTr = "LoL ve Riot Client süreçlerini kapatır; Vanguard'a dokunmaz. İki kez basılır."; IpucuEn = 'Closes LoL and Riot Client; leaves Vanguard alone. Needs two presses.' }
 )
@@ -3257,14 +3412,24 @@ foreach ($s in $Sorunlar) {
     $satir.Add_MouseEnter({ if ($this.Tag -ne $script:Calisan) { $this.Background = Firca '#212A35' } })
     $satir.Add_MouseLeave({ if ($this.Tag -ne $script:Calisan) { $this.Background = Firca '#00000000' } })
     $satir.Add_MouseLeftButtonDown({ $this.Background = Firca '#29333F' })
-    $satir.Add_MouseLeftButtonUp({ $this.Background = Firca $(if ($this.IsMouseOver -or $this.Tag -eq $script:Calisan) { '#212A35' } else { '#00000000' }); if (Basildi $this) { Kart-Bas $this.Tag } })
+    $satir.Add_MouseLeftButtonUp({ $this.Background = Firca $(if ($this.IsMouseOver -or $this.Tag -eq $script:Calisan) { '#212A35' } else { '#00000000' }); if (Basildi $this) { if ($this.Tag -eq 'ac' -and (Ac-Sorulur)) { Ac-Menu $this } else { Kart-Bas $this.Tag } } })
     $s.Satir = $satir
     [void]$SorunPanel.Children.Add($satir)
 }
 
+# "LoL'ü aç": LoL kapalıyken nasıl açılacağı sorulur; son kullanılan kip işaretli gelir
+function Ac-Sorulur { (Lol-Kapali) -and -not $script:Mesgul }
+function Ac-Menu($hedef) {
+    $simdi = Ac-Kipi
+    Menu-Ac $hedef @(
+        @{ Metin = (T 'LTK Manager ile aç (kendi modların)' 'Open with LTK Manager (your own mods)'); Deger = 'ltk'; Secili = ($simdi -eq 'ltk') }
+        @{ Metin = (T 'Rose ile aç' 'Open with Rose'); Deger = 'rose'; Secili = ($simdi -eq 'rose') }
+        @{ Metin = (T 'Düz aç (custom yok)' 'Open plain (no customs)'); Deger = 'duz'; Secili = ($simdi -eq 'duz') }
+    ) { param($d) $script:AcIstek = "$d"; Kart-Bas 'ackip' }
+}
 # Çalışan seçeneğin satırı işaretli kalır; ana düğme çalışırken soluklaşır
 function Satir-Isaretle {
-    foreach ($s in $Sorunlar) { $s.Satir.Background = Firca $(if ($s.Islem -eq $script:Calisan) { '#212A35' } else { '#00000000' }) }
+    foreach ($s in $Sorunlar) { $s.Satir.Background = Firca $(if ($s.Islem -eq $script:Calisan -or ($s.Islem -eq 'ac' -and $script:Calisan -eq 'ackip')) { '#212A35' } else { '#00000000' }) }
     $AnaDugme.Opacity = if ($script:Calisan -and $script:Calisan -eq $script:EylemIslem) { 0.7 } else { 1 }
 }
 
@@ -3676,6 +3841,7 @@ function Custom-Bilgi-Guncelle {
     $kurulu = Ltk-Kurulu
     $son = $script:LtkSon; $surum = Ltk-Surum
     $LtkAc.Visibility = if ($kurulu) { 'Visible' } else { 'Collapsed' }
+    $RoseAktar.Visibility = if ($kurulu -and $script:RoseDurum.Kurulu) { 'Visible' } else { 'Collapsed' }
     $ModEkle.IsEnabled = $kurulu
     $ModEkle.Opacity = if ($kurulu) { 1 } else { 0.4 }
     if (-not $kurulu) {
@@ -3843,6 +4009,9 @@ $CustomGorunum.Add_Drop({
     else { Yaz (T 'Yalnız .fantome, .modpkg ya da .zip dosyası alırım.' 'Only .fantome, .modpkg or .zip files.') $RenkTuruncu }
 })
 $LtkAc.Add_Click({ if (Ltk-Kurulu) { Start-Process -FilePath $LtkExe } })
+Cevir $RoseAktar "Rose'a aktar" 'Copy to Rose'
+Ipucu-Ver $RoseAktar "Buradaki modları Rose'un custom skin klasörüne kopyalar; Rose'la girdiğinde de seçebilirsin. Daha önce aktarılan yeniden kopyalanmaz." "Copies these mods into Rose's custom skin folder so you can pick them when playing with Rose too. Already copied ones are skipped."
+$RoseAktar.Add_Click({ Kart-Bas 'roseaktar' })
 # Kaynak seçici: iş zamanlayıcı kuyruğunda çalışır (Rose'u durdurmak / LTK'yı açmak beklemeli işler)
 foreach ($k in $KaynakLtk, $KaynakRose) {
     $k.Add_MouseLeftButtonUp({
@@ -3997,7 +4166,9 @@ $Pencere.Add_PreviewKeyDown({
     }
     if ($esc) { if ($script:Sekme -ne 'ana') { Sekme-Sec 'ana' } else { $Pencere.WindowState = 'Minimized' }; return }
     if ($Duzenleyici.Visibility -eq 'Visible' -or $CustomGorunum.Visibility -eq 'Visible') { return }
-    if ($n -eq 4) { Kart-Bas $script:EylemIslem } else { Kart-Bas $Sorunlar[$n].Islem }
+    if ($n -eq 4) { Kart-Bas $script:EylemIslem }
+    elseif ($Sorunlar[$n].Islem -eq 'ac' -and (Ac-Sorulur)) { Ac-Menu $Sorunlar[$n].Satir }
+    else { Kart-Bas $Sorunlar[$n].Islem }
 })
 
 # ---- Zamanlayıcı ----
