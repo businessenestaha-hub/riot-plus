@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riot Plus Yeni Yön</title>
+<style>
+  :root {
+    --gece: #141A22;      /* zemin: gece mavisi */
+    --katman: #1C232D;    /* bölüm zemini */
+    --cizgi: #2A333F;     /* ayraç */
+    --kemik: #ECE5D8;     /* yazı */
+    --kul: #8C95A1;       /* ikincil yazı */
+    --cimen: #1FBF62;     /* tek eylem rengi (logo yeşili) */
+    --kor: #E5484D;       /* tehlike */
+    --dar: "Bahnschrift SemiCondensed", "Bahnschrift", sans-serif;
+    --govde: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    --ikon: "Segoe Fluent Icons", "Segoe MDL2 Assets";
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0E1218; color: var(--kemik); font: 13px/1.45 var(--govde); padding: 28px 16px 48px; }
+  .sahne { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
+  .durum-adi { font: 600 14px var(--govde); color: var(--kul); margin-bottom: 10px; }
+  .durum-adi b { color: var(--kemik); font-weight: 600; }
+
+  .pencere { width: 420px; background: var(--gece); border-radius: 10px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.55); outline: 1px solid #222B36; }
+
+  /* Kahraman: şampiyonun gerçek görseli, başlık çubuğu üstünde */
+  .kahraman { position: relative; height: 196px; background-size: cover; background-position: var(--odak, center 22%); }
+  .kahraman::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,26,34,.55) 0%, rgba(20,26,34,0) 30%, rgba(20,26,34,.15) 55%, var(--gece) 100%); }
+  .ust { position: absolute; z-index: 2; top: 0; left: 0; right: 0; height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 12px; }
+  .ust img { width: 16px; height: 16px; }
+  .ust .ad { font: 600 13px var(--dar); color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+  .ust .bosluk { flex: 1; }
+  .dil { font: 600 11.5px var(--govde); color: rgba(255,255,255,.75); padding: 3px 7px; border-radius: 5px; background: rgba(10,14,20,.45); }
+  .dil b { color: #fff; }
+  .pd { width: 34px; height: 28px; display: grid; place-items: center; font: 10px var(--ikon); color: rgba(255,255,255,.8); border-radius: 5px; }
+  .pd:hover { background: rgba(255,255,255,.12); }
+  .yazi { position: absolute; z-index: 2; left: 16px; right: 16px; bottom: 12px; }
+  .sampiyon { font: 600 40px/1 var(--dar); letter-spacing: -.01em; }
+  .neden { color: #C9C2B6; margin-top: 4px; }
+  .sayac { font: 600 58px/1 var(--dar); font-variant-numeric: tabular-nums; }
+  .kahraman.karanlik::after { background: linear-gradient(180deg, rgba(20,26,34,.7), rgba(20,26,34,.55) 45%, var(--gece)); }
+
+  /* Ana eylem */
+  .eylem { padding: 14px 16px 12px; display: flex; gap: 12px; align-items: center; }
+  .dugme { font: 600 17px var(--dar); color: #06210F; background: var(--cimen); border: 0; border-radius: 7px; height: 46px; padding: 0 22px; cursor: pointer; white-space: nowrap; }
+  .dugme:hover { background: #26CC6C; }
+  .dugme.ikincil { background: transparent; color: var(--kemik); box-shadow: inset 0 0 0 1px #3A4452; }
+  .dugme.ikincil:hover { box-shadow: inset 0 0 0 1px var(--kul); }
+  .secenek { display: grid; gap: 2px; min-width: 0; }
+  .secenek span { cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .secenek span:hover { color: #fff; text-decoration: underline; text-decoration-color: var(--kul); text-underline-offset: 3px; }
+  .secenek .k { color: var(--kul); }
+  .hal { padding: 0 16px 14px; color: var(--kul); }
+  .hal b { color: var(--kemik); font-weight: 600; }
+
+  /* Bölümler */
+  .bolum { border-top: 1px solid var(--cizgi); padding: 12px 16px 10px; }
+  .bolum h2 { font: 600 13px var(--govde); color: var(--kul); margin-bottom: 6px; }
+  .satir { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; }
+  .satir:hover { background: var(--katman); }
+  .satir .ne { flex: 1; }
+  .satir.tehlike .ne { color: #F0797C; }
+  .tus { font: 600 11px var(--govde); color: var(--kul); min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 4px; box-shadow: inset 0 -1px 0 #0B0F14, inset 0 0 0 1px #343E4B; background: #19202A; }
+
+  /* Seçim: portreler */
+  .secim { display: flex; align-items: center; gap: 10px; min-height: 52px; }
+  .secim .ne { width: 64px; flex: none; }
+  .secim .ne small { display: block; color: var(--kul); font-size: 11.5px; }
+  .portreler { display: flex; gap: 6px; flex: 1; }
+  .portre { width: 40px; height: 40px; border-radius: 6px; background-size: cover; position: relative; outline: 1px solid rgba(255,255,255,.08); }
+  .portre.bos { background: #1A212B; outline: 1px dashed #364050; }
+  .portre.banli { filter: grayscale(1) brightness(.55); }
+  .portre.banli::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--kor); transform: rotate(45deg); }
+  .portre.alindi { opacity: .35; }
+  .portre.secili { outline: 2px solid var(--cimen); outline-offset: 1px; }
+  .anahtar { width: 34px; height: 20px; border-radius: 10px; background: #2C3541; position: relative; flex: none; cursor: pointer; }
+  .anahtar::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #8C95A1; transition: left .15s; }
+  .anahtar.acik { background: var(--cimen); }
+  .anahtar.acik::after { left: 17px; background: #fff; }
+  .duzenle { color: var(--kul); font-size: 12px; text-decoration: underline; text-decoration-color: #3A4452; text-underline-offset: 3px; cursor: pointer; }
+
+  /* Son mesaj */
+  .mesaj { border-top: 1px solid var(--cizgi); display: flex; align-items: center; gap: 9px; padding: 10px 16px 12px; color: #CFC8BC; }
+  .mesaj img { width: 16px; height: 16px; flex: none; }
+  .mesaj time { color: var(--kul); margin-left: auto; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="sahne">
+
+  <!-- 1. Lobide -->
+  <div>
+    <div class="durum-adi"><b>Lobide</b>, sıraya girmeden önce</div>
+    <div class="pencere">
+      <div class="kahraman" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Talon_0.jpg); --odak: 62% 18%">
+        <div class="ust"><img src="logo.png" alt=""><span class="ad">Riot Plus</span><span class="bosluk"></span><span class="dil"><b>TR</b> / EN</span><span class="pd">&#xE921;</span><span class="pd">&#xE8BB;</span></div>
+        <div class="yazi"><div class="sampiyon">Talon</div><div class="neden">Orman için ilk tercihin</div></div>
+      </div>
+      <div class="eylem">
+        <button class="dugme">Sıraya gir</button>
+        <div class="secenek"><span>Dereceli tek/çift</span><span class="k">Orman, yedek Orta</span></div>
+      </div>
+      <div class="hal">LoL açık, lobidesin. Ping <b>5 ms</b>, kayıp yok.</div>
+      <div class="bolum">
+        <h2>Şampiyon seçimi</h2>
+        <div class="secim"><div class="ne">Kabul</div><div class="portreler" style="color:var(--kul)">Maç bulununca kabul ederim</div><div class="anahtar acik"></div></div>
+        <div class="secim"><div class="ne">Banla</div><div class="portreler">
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Qiyana.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Zed.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Khazix.png)"></div></div><div class="anahtar acik"></div></div>
+        <div class="secim"><div class="ne">Oyna<small>Orman</small></div><div class="portreler">
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Talon.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Khazix.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Rengar.png)"></div></div><div class="anahtar acik"></div></div>
+        <span class="duzenle">Rol listelerini düzenle</span>
+      </div>
+      <div class="bolum">
+        <h2>Sorun mu var?</h2>
+        <div class="satir"><span class="ne">Ekrana gelmiyor</span><span class="tus">1</span></div>
+        <div class="satir"><span class="ne">Yükleme ekranında kaldı</span><span class="tus">2</span></div>
+        <div class="satir"><span class="ne">LoL'ü aç</span><span class="tus">3</span></div>
+        <div class="satir tehlike"><span class="ne">Hepsini kapat</span><span class="tus">4</span></div>
+      </div>
+      <div class="mesaj"><img src="logo.png" alt="">LoL açıldı, 12 saniye sürdü. İyi oyunlar.<time>23:55</time></div>
+    </div>
+  </div>
+
+  <!-- 2. Sırada -->
+  <div>
+    <div class="durum-adi"><b>Sırada</b>, maç aranırken</div>
+    <div class="pencere">
+      <div class="kahraman karanlik" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Talon_0.jpg); --odak: 62% 18%">
+        <div class="ust"><img src="logo.png" alt=""><span class="ad">Riot Plus</span><span class="bosluk"></span><span class="dil"><b>TR</b> / EN</span><span class="pd">&#xE921;</span><span class="pd">&#xE8BB;</span></div>
+        <div class="yazi"><div class="sayac">1:23</div><div class="neden">Dereceli tek/çift aranıyor, tahmini 2:10</div></div>
+      </div>
+      <div class="eylem">
+        <button class="dugme ikincil">Sıradan çık</button>
+        <div class="secenek"><span class="k">Maç bulununca kabul ederim.</span><span class="k">Orman, yedek Orta</span></div>
+      </div>
+      <div class="hal">Ping <b>5 ms</b>, kayıp yok.</div>
+      <div class="bolum">
+        <h2>Şampiyon seçimi</h2>
+        <div class="secim"><div class="ne">Kabul</div><div class="portreler" style="color:var(--kul)">Maç bulununca kabul ederim</div><div class="anahtar acik"></div></div>
+        <div class="secim"><div class="ne">Banla</div><div class="portreler">
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Qiyana.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Zed.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Khazix.png)"></div></div><div class="anahtar acik"></div></div>
+        <div class="secim"><div class="ne">Oyna<small>Orman</small></div><div class="portreler">
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Talon.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Khazix.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Rengar.png)"></div></div><div class="anahtar acik"></div></div>
+        <span class="duzenle">Rol listelerini düzenle</span>
+      </div>
+      <div class="bolum">
+        <h2>Sorun mu var?</h2>
+        <div class="satir"><span class="ne">Ekrana gelmiyor</span><span class="tus">1</span></div>
+        <div class="satir"><span class="ne">Yükleme ekranında kaldı</span><span class="tus">2</span></div>
+        <div class="satir"><span class="ne">LoL'ü aç</span><span class="tus">3</span></div>
+        <div class="satir tehlike"><span class="ne">Hepsini kapat</span><span class="tus">4</span></div>
+      </div>
+      <div class="mesaj"><img src="logo.png" alt="">Sıradasın. Orman, yedek Orta.<time>23:56</time></div>
+    </div>
+  </div>
+
+  <!-- 3. Şampiyon seçiminde -->
+  <div>
+    <div class="durum-adi"><b>Şampiyon seçiminde</b>, kilitledikten sonra</div>
+    <div class="pencere">
+      <div class="kahraman" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Kaisa_0.jpg); --odak: 58% 20%">
+        <div class="ust"><img src="logo.png" alt=""><span class="ad">Riot Plus</span><span class="bosluk"></span><span class="dil"><b>TR</b> / EN</span><span class="pd">&#xE921;</span><span class="pd">&#xE8BB;</span></div>
+        <div class="yazi"><div class="sampiyon">Kai'Sa</div><div class="neden">Kilitlendi. Alt koridor, 21 sn kaldı.</div></div>
+      </div>
+      <div class="eylem">
+        <button class="dugme ikincil">LoL'e geç</button>
+        <div class="secenek"><span class="k">Seçim sürüyor, sıra kapalı.</span><span class="k">Rolün Alt</span></div>
+      </div>
+      <div class="hal">Banın atıldı, şampiyonun kilitli.</div>
+      <div class="bolum">
+        <h2>Şampiyon seçimi</h2>
+        <div class="secim"><div class="ne">Kabul</div><div class="portreler" style="color:var(--kul)">Kabul edildi</div><div class="anahtar acik"></div></div>
+        <div class="secim"><div class="ne">Banla</div><div class="portreler">
+          <div class="portre banli" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Qiyana.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Zed.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Khazix.png)"></div></div><div class="anahtar acik"></div></div>
+        <div class="secim"><div class="ne">Oyna<small>Alt</small></div><div class="portreler">
+          <div class="portre secili" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Kaisa.png)"></div>
+          <div class="portre alindi" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Twitch.png)"></div>
+          <div class="portre" style="background-image:url(https://ddragon.leagueoflegends.com/cdn/16.21.1/img/champion/Caitlyn.png)"></div></div><div class="anahtar acik"></div></div>
+        <span class="duzenle">Rol listelerini düzenle</span>
+      </div>
+      <div class="bolum">
+        <h2>Sorun mu var?</h2>
+        <div class="satir"><span class="ne">Ekrana gelmiyor</span><span class="tus">1</span></div>
+        <div class="satir"><span class="ne">Yükleme ekranında kaldı</span><span class="tus">2</span></div>
+        <div class="satir"><span class="ne">LoL'ü aç</span><span class="tus">3</span></div>
+        <div class="satir tehlike"><span class="ne">Hepsini kapat</span><span class="tus">4</span></div>
+      </div>
+      <div class="mesaj"><img src="logo.png" alt="">Qiyana'yı banladım, Kai'Sa'yı kilitledim. İyi oyunlar abi.<time>23:58</time></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

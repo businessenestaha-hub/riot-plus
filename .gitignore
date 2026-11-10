@@ -1,0 +1,25 @@
+# Logs & runtime
+gunluk.txt
+*.log
+
+# Backups
+yedek/
+*.backup.*
+*_backup.*
+*-backup.*
+
+# Test files
+lol-duzelt-test.ps1
+*_test.*
+
+# Temp / OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Large JSON caches (regeneratable)
+sampiyon-skinleri.json

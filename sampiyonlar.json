@@ -1,0 +1,1044 @@
+{
+    "surum":  "16.22.1",
+    "tarih":  "2026-11-04T01:59:06.3210224+03:00",
+    "liste":  [
+                  {
+                      "id":  429,
+                      "ad":  "Kalista",
+                      "en":  "Kalista",
+                      "kod":  "Kalista"
+                  },
+                  {
+                      "id":  427,
+                      "ad":  "Ivern",
+                      "en":  "Ivern",
+                      "kod":  "Ivern"
+                  },
+                  {
+                      "id":  498,
+                      "ad":  "Xayah",
+                      "en":  "Xayah",
+                      "kod":  "Xayah"
+                  },
+                  {
+                      "id":  421,
+                      "ad":  "Rek\u0027Sai",
+                      "en":  "Rek\u0027Sai",
+                      "kod":  "RekSai"
+                  },
+                  {
+                      "id":  420,
+                      "ad":  "Illaoi",
+                      "en":  "Illaoi",
+                      "kod":  "Illaoi"
+                  },
+                  {
+                      "id":  902,
+                      "ad":  "Milio",
+                      "en":  "Milio",
+                      "kod":  "Milio"
+                  },
+                  {
+                      "id":  412,
+                      "ad":  "Thresh",
+                      "en":  "Thresh",
+                      "kod":  "Thresh"
+                  },
+                  {
+                      "id":  523,
+                      "ad":  "Aphelios",
+                      "en":  "Aphelios",
+                      "kod":  "Aphelios"
+                  },
+                  {
+                      "id":  805,
+                      "ad":  "Locke",
+                      "en":  "Locke",
+                      "kod":  "Locke"
+                  },
+                  {
+                      "id":  804,
+                      "ad":  "Yunara",
+                      "en":  "Yunara",
+                      "kod":  "Yunara"
+                  },
+                  {
+                      "id":  800,
+                      "ad":  "Mel",
+                      "en":  "Mel",
+                      "kod":  "Mel"
+                  },
+                  {
+                      "id":  799,
+                      "ad":  "Ambessa",
+                      "en":  "Ambessa",
+                      "kod":  "Ambessa"
+                  },
+                  {
+                      "id":  360,
+                      "ad":  "Samira",
+                      "en":  "Samira",
+                      "kod":  "Samira"
+                  },
+                  {
+                      "id":  893,
+                      "ad":  "Aurora",
+                      "en":  "Aurora",
+                      "kod":  "Aurora"
+                  },
+                  {
+                      "id":  350,
+                      "ad":  "Yuumi",
+                      "en":  "Yuumi",
+                      "kod":  "Yuumi"
+                  },
+                  {
+                      "id":  777,
+                      "ad":  "Yone",
+                      "en":  "Yone",
+                      "kod":  "Yone"
+                  },
+                  {
+                      "id":  876,
+                      "ad":  "Lillia",
+                      "en":  "Lillia",
+                      "kod":  "Lillia"
+                  },
+                  {
+                      "id":  897,
+                      "ad":  "K\u0027Sante",
+                      "en":  "K\u0027Sante",
+                      "kod":  "KSante"
+                  },
+                  {
+                      "id":  901,
+                      "ad":  "Smolder",
+                      "en":  "Smolder",
+                      "kod":  "Smolder"
+                  },
+                  {
+                      "id":  711,
+                      "ad":  "Vex",
+                      "en":  "Vex",
+                      "kod":  "Vex"
+                  },
+                  {
+                      "id":  517,
+                      "ad":  "Sylas",
+                      "en":  "Sylas",
+                      "kod":  "Sylas"
+                  },
+                  {
+                      "id":  268,
+                      "ad":  "Azir",
+                      "en":  "Azir",
+                      "kod":  "Azir"
+                  },
+                  {
+                      "id":  267,
+                      "ad":  "Nami",
+                      "en":  "Nami",
+                      "kod":  "Nami"
+                  },
+                  {
+                      "id":  266,
+                      "ad":  "Aatrox",
+                      "en":  "Aatrox",
+                      "kod":  "Aatrox"
+                  },
+                  {
+                      "id":  254,
+                      "ad":  "Vi",
+                      "en":  "Vi",
+                      "kod":  "Vi"
+                  },
+                  {
+                      "id":  246,
+                      "ad":  "Qiyana",
+                      "en":  "Qiyana",
+                      "kod":  "Qiyana"
+                  },
+                  {
+                      "id":  245,
+                      "ad":  "Ekko",
+                      "en":  "Ekko",
+                      "kod":  "Ekko"
+                  },
+                  {
+                      "id":  240,
+                      "ad":  "Kled",
+                      "en":  "Kled",
+                      "kod":  "Kled"
+                  },
+                  {
+                      "id":  875,
+                      "ad":  "Sett",
+                      "en":  "Sett",
+                      "kod":  "Sett"
+                  },
+                  {
+                      "id":  238,
+                      "ad":  "Zed",
+                      "en":  "Zed",
+                      "kod":  "Zed"
+                  },
+                  {
+                      "id":  236,
+                      "ad":  "Lucian",
+                      "en":  "Lucian",
+                      "kod":  "Lucian"
+                  },
+                  {
+                      "id":  235,
+                      "ad":  "Senna",
+                      "en":  "Senna",
+                      "kod":  "Senna"
+                  },
+                  {
+                      "id":  234,
+                      "ad":  "Viego",
+                      "en":  "Viego",
+                      "kod":  "Viego"
+                  },
+                  {
+                      "id":  233,
+                      "ad":  "Briar",
+                      "en":  "Briar",
+                      "kod":  "Briar"
+                  },
+                  {
+                      "id":  223,
+                      "ad":  "Tahm Kench",
+                      "en":  "Tahm Kench",
+                      "kod":  "TahmKench"
+                  },
+                  {
+                      "id":  222,
+                      "ad":  "Jinx",
+                      "en":  "Jinx",
+                      "kod":  "Jinx"
+                  },
+                  {
+                      "id":  221,
+                      "ad":  "Zeri",
+                      "en":  "Zeri",
+                      "kod":  "Zeri"
+                  },
+                  {
+                      "id":  432,
+                      "ad":  "Bard",
+                      "en":  "Bard",
+                      "kod":  "Bard"
+                  },
+                  {
+                      "id":  203,
+                      "ad":  "Kindred",
+                      "en":  "Kindred",
+                      "kod":  "Kindred"
+                  },
+                  {
+                      "id":  202,
+                      "ad":  "Jhin",
+                      "en":  "Jhin",
+                      "kod":  "Jhin"
+                  },
+                  {
+                      "id":  201,
+                      "ad":  "Braum",
+                      "en":  "Braum",
+                      "kod":  "Braum"
+                  },
+                  {
+                      "id":  200,
+                      "ad":  "Bel\u0027Veth",
+                      "en":  "Bel\u0027Veth",
+                      "kod":  "Belveth"
+                  },
+                  {
+                      "id":  904,
+                      "ad":  "Zaahen",
+                      "en":  "Zaahen",
+                      "kod":  "Zaahen"
+                  },
+                  {
+                      "id":  887,
+                      "ad":  "Gwen",
+                      "en":  "Gwen",
+                      "kod":  "Gwen"
+                  },
+                  {
+                      "id":  516,
+                      "ad":  "Ornn",
+                      "en":  "Ornn",
+                      "kod":  "Ornn"
+                  },
+                  {
+                      "id":  48,
+                      "ad":  "Trundle",
+                      "en":  "Trundle",
+                      "kod":  "Trundle"
+                  },
+                  {
+                      "id":  166,
+                      "ad":  "Akshan",
+                      "en":  "Akshan",
+                      "kod":  "Akshan"
+                  },
+                  {
+                      "id":  164,
+                      "ad":  "Camille",
+                      "en":  "Camille",
+                      "kod":  "Camille"
+                  },
+                  {
+                      "id":  163,
+                      "ad":  "Taliyah",
+                      "en":  "Taliyah",
+                      "kod":  "Taliyah"
+                  },
+                  {
+                      "id":  161,
+                      "ad":  "Vel\u0027Koz",
+                      "en":  "Vel\u0027Koz",
+                      "kod":  "Velkoz"
+                  },
+                  {
+                      "id":  157,
+                      "ad":  "Yasuo",
+                      "en":  "Yasuo",
+                      "kod":  "Yasuo"
+                  },
+                  {
+                      "id":  154,
+                      "ad":  "Zac",
+                      "en":  "Zac",
+                      "kod":  "Zac"
+                  },
+                  {
+                      "id":  150,
+                      "ad":  "Gnar",
+                      "en":  "Gnar",
+                      "kod":  "Gnar"
+                  },
+                  {
+                      "id":  147,
+                      "ad":  "Seraphine",
+                      "en":  "Seraphine",
+                      "kod":  "Seraphine"
+                  },
+                  {
+                      "id":  145,
+                      "ad":  "Kai\u0027Sa",
+                      "en":  "Kai\u0027Sa",
+                      "kod":  "Kaisa"
+                  },
+                  {
+                      "id":  143,
+                      "ad":  "Zyra",
+                      "en":  "Zyra",
+                      "kod":  "Zyra"
+                  },
+                  {
+                      "id":  142,
+                      "ad":  "Zoe",
+                      "en":  "Zoe",
+                      "kod":  "Zoe"
+                  },
+                  {
+                      "id":  141,
+                      "ad":  "Kayn",
+                      "en":  "Kayn",
+                      "kod":  "Kayn"
+                  },
+                  {
+                      "id":  136,
+                      "ad":  "Aurelion Sol",
+                      "en":  "Aurelion Sol",
+                      "kod":  "AurelionSol"
+                  },
+                  {
+                      "id":  134,
+                      "ad":  "Syndra",
+                      "en":  "Syndra",
+                      "kod":  "Syndra"
+                  },
+                  {
+                      "id":  133,
+                      "ad":  "Quinn",
+                      "en":  "Quinn",
+                      "kod":  "Quinn"
+                  },
+                  {
+                      "id":  131,
+                      "ad":  "Diana",
+                      "en":  "Diana",
+                      "kod":  "Diana"
+                  },
+                  {
+                      "id":  895,
+                      "ad":  "Nilah",
+                      "en":  "Nilah",
+                      "kod":  "Nilah"
+                  },
+                  {
+                      "id":  127,
+                      "ad":  "Lissandra",
+                      "en":  "Lissandra",
+                      "kod":  "Lissandra"
+                  },
+                  {
+                      "id":  126,
+                      "ad":  "Jayce",
+                      "en":  "Jayce",
+                      "kod":  "Jayce"
+                  },
+                  {
+                      "id":  555,
+                      "ad":  "Pyke",
+                      "en":  "Pyke",
+                      "kod":  "Pyke"
+                  },
+                  {
+                      "id":  122,
+                      "ad":  "Darius",
+                      "en":  "Darius",
+                      "kod":  "Darius"
+                  },
+                  {
+                      "id":  121,
+                      "ad":  "Kha\u0027Zix",
+                      "en":  "Kha\u0027Zix",
+                      "kod":  "Khazix"
+                  },
+                  {
+                      "id":  120,
+                      "ad":  "Hecarim",
+                      "en":  "Hecarim",
+                      "kod":  "Hecarim"
+                  },
+                  {
+                      "id":  119,
+                      "ad":  "Draven",
+                      "en":  "Draven",
+                      "kod":  "Draven"
+                  },
+                  {
+                      "id":  117,
+                      "ad":  "Lulu",
+                      "en":  "Lulu",
+                      "kod":  "Lulu"
+                  },
+                  {
+                      "id":  115,
+                      "ad":  "Ziggs",
+                      "en":  "Ziggs",
+                      "kod":  "Ziggs"
+                  },
+                  {
+                      "id":  114,
+                      "ad":  "Fiora",
+                      "en":  "Fiora",
+                      "kod":  "Fiora"
+                  },
+                  {
+                      "id":  113,
+                      "ad":  "Sejuani",
+                      "en":  "Sejuani",
+                      "kod":  "Sejuani"
+                  },
+                  {
+                      "id":  112,
+                      "ad":  "Viktor",
+                      "en":  "Viktor",
+                      "kod":  "Viktor"
+                  },
+                  {
+                      "id":  111,
+                      "ad":  "Nautilus",
+                      "en":  "Nautilus",
+                      "kod":  "Nautilus"
+                  },
+                  {
+                      "id":  110,
+                      "ad":  "Varus",
+                      "en":  "Varus",
+                      "kod":  "Varus"
+                  },
+                  {
+                      "id":  107,
+                      "ad":  "Rengar",
+                      "en":  "Rengar",
+                      "kod":  "Rengar"
+                  },
+                  {
+                      "id":  106,
+                      "ad":  "Volibear",
+                      "en":  "Volibear",
+                      "kod":  "Volibear"
+                  },
+                  {
+                      "id":  105,
+                      "ad":  "Fizz",
+                      "en":  "Fizz",
+                      "kod":  "Fizz"
+                  },
+                  {
+                      "id":  104,
+                      "ad":  "Graves",
+                      "en":  "Graves",
+                      "kod":  "Graves"
+                  },
+                  {
+                      "id":  103,
+                      "ad":  "Ahri",
+                      "en":  "Ahri",
+                      "kod":  "Ahri"
+                  },
+                  {
+                      "id":  102,
+                      "ad":  "Shyvana",
+                      "en":  "Shyvana",
+                      "kod":  "Shyvana"
+                  },
+                  {
+                      "id":  101,
+                      "ad":  "Xerath",
+                      "en":  "Xerath",
+                      "kod":  "Xerath"
+                  },
+                  {
+                      "id":  99,
+                      "ad":  "Lux",
+                      "en":  "Lux",
+                      "kod":  "Lux"
+                  },
+                  {
+                      "id":  98,
+                      "ad":  "Shen",
+                      "en":  "Shen",
+                      "kod":  "Shen"
+                  },
+                  {
+                      "id":  96,
+                      "ad":  "Kog\u0027Maw",
+                      "en":  "Kog\u0027Maw",
+                      "kod":  "KogMaw"
+                  },
+                  {
+                      "id":  526,
+                      "ad":  "Rell",
+                      "en":  "Rell",
+                      "kod":  "Rell"
+                  },
+                  {
+                      "id":  92,
+                      "ad":  "Riven",
+                      "en":  "Riven",
+                      "kod":  "Riven"
+                  },
+                  {
+                      "id":  91,
+                      "ad":  "Talon",
+                      "en":  "Talon",
+                      "kod":  "Talon"
+                  },
+                  {
+                      "id":  90,
+                      "ad":  "Malzahar",
+                      "en":  "Malzahar",
+                      "kod":  "Malzahar"
+                  },
+                  {
+                      "id":  89,
+                      "ad":  "Leona",
+                      "en":  "Leona",
+                      "kod":  "Leona"
+                  },
+                  {
+                      "id":  950,
+                      "ad":  "Naafiri",
+                      "en":  "Naafiri",
+                      "kod":  "Naafiri"
+                  },
+                  {
+                      "id":  518,
+                      "ad":  "Neeko",
+                      "en":  "Neeko",
+                      "kod":  "Neeko"
+                  },
+                  {
+                      "id":  86,
+                      "ad":  "Garen",
+                      "en":  "Garen",
+                      "kod":  "Garen"
+                  },
+                  {
+                      "id":  85,
+                      "ad":  "Kennen",
+                      "en":  "Kennen",
+                      "kod":  "Kennen"
+                  },
+                  {
+                      "id":  84,
+                      "ad":  "Akali",
+                      "en":  "Akali",
+                      "kod":  "Akali"
+                  },
+                  {
+                      "id":  83,
+                      "ad":  "Yorick",
+                      "en":  "Yorick",
+                      "kod":  "Yorick"
+                  },
+                  {
+                      "id":  82,
+                      "ad":  "Mordekaiser",
+                      "en":  "Mordekaiser",
+                      "kod":  "Mordekaiser"
+                  },
+                  {
+                      "id":  81,
+                      "ad":  "Ezreal",
+                      "en":  "Ezreal",
+                      "kod":  "Ezreal"
+                  },
+                  {
+                      "id":  80,
+                      "ad":  "Pantheon",
+                      "en":  "Pantheon",
+                      "kod":  "Pantheon"
+                  },
+                  {
+                      "id":  79,
+                      "ad":  "Gragas",
+                      "en":  "Gragas",
+                      "kod":  "Gragas"
+                  },
+                  {
+                      "id":  78,
+                      "ad":  "Poppy",
+                      "en":  "Poppy",
+                      "kod":  "Poppy"
+                  },
+                  {
+                      "id":  77,
+                      "ad":  "Udyr",
+                      "en":  "Udyr",
+                      "kod":  "Udyr"
+                  },
+                  {
+                      "id":  76,
+                      "ad":  "Nidalee",
+                      "en":  "Nidalee",
+                      "kod":  "Nidalee"
+                  },
+                  {
+                      "id":  75,
+                      "ad":  "Nasus",
+                      "en":  "Nasus",
+                      "kod":  "Nasus"
+                  },
+                  {
+                      "id":  74,
+                      "ad":  "Heimerdinger",
+                      "en":  "Heimerdinger",
+                      "kod":  "Heimerdinger"
+                  },
+                  {
+                      "id":  26,
+                      "ad":  "Zilean",
+                      "en":  "Zilean",
+                      "kod":  "Zilean"
+                  },
+                  {
+                      "id":  72,
+                      "ad":  "Skarner",
+                      "en":  "Skarner",
+                      "kod":  "Skarner"
+                  },
+                  {
+                      "id":  69,
+                      "ad":  "Cassiopeia",
+                      "en":  "Cassiopeia",
+                      "kod":  "Cassiopeia"
+                  },
+                  {
+                      "id":  68,
+                      "ad":  "Rumble",
+                      "en":  "Rumble",
+                      "kod":  "Rumble"
+                  },
+                  {
+                      "id":  67,
+                      "ad":  "Vayne",
+                      "en":  "Vayne",
+                      "kod":  "Vayne"
+                  },
+                  {
+                      "id":  497,
+                      "ad":  "Rakan",
+                      "en":  "Rakan",
+                      "kod":  "Rakan"
+                  },
+                  {
+                      "id":  64,
+                      "ad":  "Lee Sin",
+                      "en":  "Lee Sin",
+                      "kod":  "LeeSin"
+                  },
+                  {
+                      "id":  63,
+                      "ad":  "Brand",
+                      "en":  "Brand",
+                      "kod":  "Brand"
+                  },
+                  {
+                      "id":  62,
+                      "ad":  "Wukong",
+                      "en":  "Wukong",
+                      "kod":  "MonkeyKing"
+                  },
+                  {
+                      "id":  61,
+                      "ad":  "Orianna",
+                      "en":  "Orianna",
+                      "kod":  "Orianna"
+                  },
+                  {
+                      "id":  60,
+                      "ad":  "Elise",
+                      "en":  "Elise",
+                      "kod":  "Elise"
+                  },
+                  {
+                      "id":  59,
+                      "ad":  "Jarvan IV",
+                      "en":  "Jarvan IV",
+                      "kod":  "JarvanIV"
+                  },
+                  {
+                      "id":  58,
+                      "ad":  "Renekton",
+                      "en":  "Renekton",
+                      "kod":  "Renekton"
+                  },
+                  {
+                      "id":  57,
+                      "ad":  "Maokai",
+                      "en":  "Maokai",
+                      "kod":  "Maokai"
+                  },
+                  {
+                      "id":  56,
+                      "ad":  "Nocturne",
+                      "en":  "Nocturne",
+                      "kod":  "Nocturne"
+                  },
+                  {
+                      "id":  55,
+                      "ad":  "Katarina",
+                      "en":  "Katarina",
+                      "kod":  "Katarina"
+                  },
+                  {
+                      "id":  54,
+                      "ad":  "Malphite",
+                      "en":  "Malphite",
+                      "kod":  "Malphite"
+                  },
+                  {
+                      "id":  53,
+                      "ad":  "Blitzcrank",
+                      "en":  "Blitzcrank",
+                      "kod":  "Blitzcrank"
+                  },
+                  {
+                      "id":  51,
+                      "ad":  "Caitlyn",
+                      "en":  "Caitlyn",
+                      "kod":  "Caitlyn"
+                  },
+                  {
+                      "id":  50,
+                      "ad":  "Swain",
+                      "en":  "Swain",
+                      "kod":  "Swain"
+                  },
+                  {
+                      "id":  910,
+                      "ad":  "Hwei",
+                      "en":  "Hwei",
+                      "kod":  "Hwei"
+                  },
+                  {
+                      "id":  45,
+                      "ad":  "Veigar",
+                      "en":  "Veigar",
+                      "kod":  "Veigar"
+                  },
+                  {
+                      "id":  44,
+                      "ad":  "Taric",
+                      "en":  "Taric",
+                      "kod":  "Taric"
+                  },
+                  {
+                      "id":  43,
+                      "ad":  "Karma",
+                      "en":  "Karma",
+                      "kod":  "Karma"
+                  },
+                  {
+                      "id":  42,
+                      "ad":  "Corki",
+                      "en":  "Corki",
+                      "kod":  "Corki"
+                  },
+                  {
+                      "id":  41,
+                      "ad":  "Gangplank",
+                      "en":  "Gangplank",
+                      "kod":  "Gangplank"
+                  },
+                  {
+                      "id":  40,
+                      "ad":  "Janna",
+                      "en":  "Janna",
+                      "kod":  "Janna"
+                  },
+                  {
+                      "id":  39,
+                      "ad":  "Irelia",
+                      "en":  "Irelia",
+                      "kod":  "Irelia"
+                  },
+                  {
+                      "id":  38,
+                      "ad":  "Kassadin",
+                      "en":  "Kassadin",
+                      "kod":  "Kassadin"
+                  },
+                  {
+                      "id":  37,
+                      "ad":  "Sona",
+                      "en":  "Sona",
+                      "kod":  "Sona"
+                  },
+                  {
+                      "id":  36,
+                      "ad":  "Dr. Mundo",
+                      "en":  "Dr. Mundo",
+                      "kod":  "DrMundo"
+                  },
+                  {
+                      "id":  35,
+                      "ad":  "Shaco",
+                      "en":  "Shaco",
+                      "kod":  "Shaco"
+                  },
+                  {
+                      "id":  34,
+                      "ad":  "Anivia",
+                      "en":  "Anivia",
+                      "kod":  "Anivia"
+                  },
+                  {
+                      "id":  33,
+                      "ad":  "Rammus",
+                      "en":  "Rammus",
+                      "kod":  "Rammus"
+                  },
+                  {
+                      "id":  32,
+                      "ad":  "Amumu",
+                      "en":  "Amumu",
+                      "kod":  "Amumu"
+                  },
+                  {
+                      "id":  31,
+                      "ad":  "Cho\u0027Gath",
+                      "en":  "Cho\u0027Gath",
+                      "kod":  "Chogath"
+                  },
+                  {
+                      "id":  30,
+                      "ad":  "Karthus",
+                      "en":  "Karthus",
+                      "kod":  "Karthus"
+                  },
+                  {
+                      "id":  29,
+                      "ad":  "Twitch",
+                      "en":  "Twitch",
+                      "kod":  "Twitch"
+                  },
+                  {
+                      "id":  28,
+                      "ad":  "Evelynn",
+                      "en":  "Evelynn",
+                      "kod":  "Evelynn"
+                  },
+                  {
+                      "id":  27,
+                      "ad":  "Singed",
+                      "en":  "Singed",
+                      "kod":  "Singed"
+                  },
+                  {
+                      "id":  888,
+                      "ad":  "Renata Glasc",
+                      "en":  "Renata Glasc",
+                      "kod":  "Renata"
+                  },
+                  {
+                      "id":  25,
+                      "ad":  "Morgana",
+                      "en":  "Morgana",
+                      "kod":  "Morgana"
+                  },
+                  {
+                      "id":  24,
+                      "ad":  "Jax",
+                      "en":  "Jax",
+                      "kod":  "Jax"
+                  },
+                  {
+                      "id":  23,
+                      "ad":  "Tryndamere",
+                      "en":  "Tryndamere",
+                      "kod":  "Tryndamere"
+                  },
+                  {
+                      "id":  22,
+                      "ad":  "Ashe",
+                      "en":  "Ashe",
+                      "kod":  "Ashe"
+                  },
+                  {
+                      "id":  21,
+                      "ad":  "Miss Fortune",
+                      "en":  "Miss Fortune",
+                      "kod":  "MissFortune"
+                  },
+                  {
+                      "id":  20,
+                      "ad":  "Nunu ve Willump",
+                      "en":  "Nunu \u0026 Willump",
+                      "kod":  "Nunu"
+                  },
+                  {
+                      "id":  19,
+                      "ad":  "Warwick",
+                      "en":  "Warwick",
+                      "kod":  "Warwick"
+                  },
+                  {
+                      "id":  18,
+                      "ad":  "Tristana",
+                      "en":  "Tristana",
+                      "kod":  "Tristana"
+                  },
+                  {
+                      "id":  17,
+                      "ad":  "Teemo",
+                      "en":  "Teemo",
+                      "kod":  "Teemo"
+                  },
+                  {
+                      "id":  16,
+                      "ad":  "Soraka",
+                      "en":  "Soraka",
+                      "kod":  "Soraka"
+                  },
+                  {
+                      "id":  15,
+                      "ad":  "Sivir",
+                      "en":  "Sivir",
+                      "kod":  "Sivir"
+                  },
+                  {
+                      "id":  14,
+                      "ad":  "Sion",
+                      "en":  "Sion",
+                      "kod":  "Sion"
+                  },
+                  {
+                      "id":  13,
+                      "ad":  "Ryze",
+                      "en":  "Ryze",
+                      "kod":  "Ryze"
+                  },
+                  {
+                      "id":  12,
+                      "ad":  "Alistar",
+                      "en":  "Alistar",
+                      "kod":  "Alistar"
+                  },
+                  {
+                      "id":  11,
+                      "ad":  "Master Yi",
+                      "en":  "Master Yi",
+                      "kod":  "MasterYi"
+                  },
+                  {
+                      "id":  10,
+                      "ad":  "Kayle",
+                      "en":  "Kayle",
+                      "kod":  "Kayle"
+                  },
+                  {
+                      "id":  9,
+                      "ad":  "Fiddlesticks",
+                      "en":  "Fiddlesticks",
+                      "kod":  "Fiddlesticks"
+                  },
+                  {
+                      "id":  8,
+                      "ad":  "Vladimir",
+                      "en":  "Vladimir",
+                      "kod":  "Vladimir"
+                  },
+                  {
+                      "id":  7,
+                      "ad":  "LeBlanc",
+                      "en":  "LeBlanc",
+                      "kod":  "Leblanc"
+                  },
+                  {
+                      "id":  6,
+                      "ad":  "Urgot",
+                      "en":  "Urgot",
+                      "kod":  "Urgot"
+                  },
+                  {
+                      "id":  5,
+                      "ad":  "Xin Zhao",
+                      "en":  "Xin Zhao",
+                      "kod":  "XinZhao"
+                  },
+                  {
+                      "id":  4,
+                      "ad":  "Twisted Fate",
+                      "en":  "Twisted Fate",
+                      "kod":  "TwistedFate"
+                  },
+                  {
+                      "id":  3,
+                      "ad":  "Galio",
+                      "en":  "Galio",
+                      "kod":  "Galio"
+                  },
+                  {
+                      "id":  2,
+                      "ad":  "Olaf",
+                      "en":  "Olaf",
+                      "kod":  "Olaf"
+                  },
+                  {
+                      "id":  1,
+                      "ad":  "Annie",
+                      "en":  "Annie",
+                      "kod":  "Annie"
+                  }
+              ]
+}

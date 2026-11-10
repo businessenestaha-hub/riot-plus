@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riot Plus Temaları</title>
+<style>
+  :root { --sayfa: #05070b; --yazi: #c9ced8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--sayfa); color: var(--yazi); font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif; padding: 28px 16px 40px; }
+  h1 { font: 600 22px "Segoe UI Variable Display", "Segoe UI", sans-serif; color: #fff; text-align: center; }
+  .alt { text-align: center; color: #8a92a3; margin: 6px 0 26px; font-size: 14px; }
+  .sira { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
+  .secenek { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .etiket { font: 700 15px "Bahnschrift", "Segoe UI", sans-serif; letter-spacing: .06em; color: #fff; }
+  .etiket small { display: block; font: 400 12.5px "Segoe UI", sans-serif; letter-spacing: 0; color: #8a92a3; text-align: center; margin-top: 3px; }
+  .ikon { font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets"; font-style: normal; line-height: 1; }
+
+  /* ---- ortak pencere iskeleti ---- */
+  .pencere { width: 440px; max-width: calc(100vw - 32px); background: var(--arka); border: 1px solid var(--cerceve); border-radius: var(--kose); overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.6), var(--dis-parlama, 0 0 0 transparent); }
+  .baslik { display: flex; align-items: center; gap: 9px; height: 40px; padding: 0 6px 0 14px; background: var(--baslik-arka); border-bottom: 1px solid var(--cerceve); }
+  .baslik img { width: 18px; height: 18px; }
+  .ad { font: 700 13px "Bahnschrift", sans-serif; letter-spacing: .14em; color: var(--ad-renk); }
+  .surum { font-size: 10.5px; color: var(--soluk); border: 1px solid var(--cerceve); padding: 1px 6px; border-radius: 99px; }
+  .bosluk { flex: 1; }
+  .dil { display: flex; border: 1px solid var(--cerceve); border-radius: var(--kucuk-kose); overflow: hidden; margin-right: 6px; }
+  .dil span { font: 700 10.5px "Bahnschrift", sans-serif; padding: 3px 8px; color: var(--soluk); letter-spacing: .05em; }
+  .dil span.aktif { background: var(--vurgu); color: var(--vurgu-ustu); }
+  .pd { width: 40px; height: 30px; display: grid; place-items: center; color: var(--soluk); font-size: 10px; border-radius: 6px; }
+  .pd:hover { background: rgba(255,255,255,.06); }
+  .pd.kapat:hover { background: #c42b1c; color: #fff; }
+
+  .ust { padding: 14px 16px 10px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: end; }
+  .ping-etiket { font: 600 10.5px "Bahnschrift", sans-serif; letter-spacing: .12em; color: var(--soluk); text-transform: uppercase; }
+  .ping { font: 700 30px "Bahnschrift", sans-serif; color: var(--iyi); line-height: 1; text-shadow: var(--ping-parlama, none); }
+  .ping small { font-size: 14px; font-weight: 600; margin-left: 2px; color: var(--soluk); }
+  .ping-alt { font-size: 11.5px; color: var(--soluk); grid-column: 1 / -1; }
+  .grafik { width: 170px; height: 38px; }
+  .grafik polyline { fill: none; stroke: var(--iyi); stroke-width: 1.6; }
+  .grafik path { fill: var(--grafik-dolgu); }
+
+  .durumlar { display: flex; gap: 8px; padding: 0 16px 12px; }
+  .cip { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 5px 10px; background: var(--kart); border: 1px solid var(--cerceve); border-radius: var(--kucuk-kose); color: var(--yazi2); }
+  .cip i { width: 7px; height: 7px; border-radius: 50%; background: var(--iyi); box-shadow: 0 0 8px var(--iyi); }
+  .cip i.yok { background: #4b5263; box-shadow: none; }
+  .cip b { font-weight: 600; color: var(--yazi1); }
+
+  .sekmeler { display: flex; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--cerceve); }
+  .sekme { display: flex; align-items: center; gap: 7px; padding: 10px 12px 11px; font: 600 12.5px "Bahnschrift", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--soluk); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .sekme .ikon { font-size: 13px; }
+  .sekme.aktif { color: var(--yazi1); border-color: var(--vurgu); }
+
+  .kartlar { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .kart { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 11px 12px; background: var(--kart); border: 1px solid var(--cerceve); border-radius: var(--kart-kose); position: relative; cursor: pointer; transition: .15s; }
+  .kart:hover { background: var(--kart-uzerin); border-color: var(--kart-uzerin-cerceve); }
+  .kart .kutu { width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--kucuk-kose); background: var(--ikon-arka); color: var(--ikon-renk); font-size: 18px; }
+  .kart.tehlike .kutu { background: rgba(232,72,85,.12); color: #ff6b76; }
+  .kart h3 { font: 600 14px "Segoe UI Variable Text", "Segoe UI", sans-serif; color: var(--yazi1); }
+  .kart p { font-size: 12px; color: var(--soluk); margin-top: 2px; }
+  .tus { font: 700 11px "Bahnschrift", sans-serif; color: var(--soluk); border: 1px solid var(--cerceve); border-radius: 5px; width: 22px; height: 22px; display: grid; place-items: center; }
+  .kart.sira-karti { grid-template-columns: 40px 1fr; border-color: var(--vurgu-cerceve); background: var(--sira-arka); }
+  .secimler { grid-column: 1 / -1; display: grid; grid-template-columns: 1.3fr .85fr .85fr auto; gap: 6px; }
+  .acilir { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; padding: 7px 9px; background: var(--alan); border: 1px solid var(--cerceve); border-radius: var(--kucuk-kose); color: var(--yazi1); white-space: nowrap; }
+  .acilir span { color: var(--soluk); font-size: 10.5px; margin-right: 2px; }
+  .acilir .ikon { font-size: 9px; color: var(--soluk); }
+  .dugme { white-space: nowrap; font: 700 12px "Bahnschrift", sans-serif; letter-spacing: .08em; padding: 0 12px; border-radius: var(--kucuk-kose); background: var(--dugme-arka); color: var(--vurgu-ustu); display: grid; place-items: center; box-shadow: var(--dugme-parlama, none); border: 1px solid var(--dugme-cerceve, transparent); }
+
+  .gunluk { margin: 0 12px 10px; background: var(--alan); border: 1px solid var(--cerceve); border-radius: var(--kart-kose); padding: 9px 11px; font: 12px/1.65 "Cascadia Mono", "Consolas", monospace; }
+  .gunluk div { color: var(--yazi2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gunluk time { color: var(--soluk); margin-right: 8px; }
+  .gunluk .y { color: var(--iyi); }
+  .gunluk .a { color: var(--vurgu-yazi); }
+  .alt-bilgi { display: flex; justify-content: space-between; padding: 0 16px 12px; font-size: 11px; color: var(--soluk); }
+
+  /* ---- A: Hextech (LoL client'ına yakın) ---- */
+  .hextech { --arka: linear-gradient(180deg, #091428 0%, #010a13 55%); --baslik-arka: #010a13; --cerceve: #2b2617; --kose: 2px; --kucuk-kose: 2px; --kart-kose: 2px;
+    --ad-renk: #c8aa6e; --soluk: #7c8a99; --yazi1: #f0e6d2; --yazi2: #a09b8c; --vurgu: #c8aa6e; --vurgu-ustu: #010a13; --vurgu-cerceve: #785a28; --vurgu-yazi: #c8aa6e;
+    --iyi: #0ac8b9; --kart: rgba(30,35,40,.55); --kart-uzerin: rgba(30,40,45,.9); --kart-uzerin-cerceve: #785a28; --ikon-arka: linear-gradient(135deg,#0a323c,#091428); --ikon-renk: #0ac8b9;
+    --alan: rgba(1,10,19,.85); --sira-arka: linear-gradient(90deg, rgba(10,200,185,.08), rgba(30,35,40,.55) 60%); --dugme-arka: linear-gradient(180deg,#c8aa6e,#785a28); --grafik-dolgu: rgba(10,200,185,.12);
+    --dis-parlama: 0 0 0 1px #010a13, 0 0 0 2px #463714; }
+  .hextech .ad, .hextech .kart h3 { font-family: "Bahnschrift", sans-serif; letter-spacing: .04em; }
+  .hextech .kart h3 { text-transform: uppercase; font-size: 13px; }
+  .hextech .kart::before { content: ""; position: absolute; left: -1px; top: 10px; bottom: 10px; width: 2px; background: #c8aa6e; }
+  .hextech .kart.tehlike::before { background: #e84855; }
+
+  /* ---- B: Neon (logo yeşili) ---- */
+  .neon { --arka: radial-gradient(120% 60% at 100% 0%, rgba(0,230,118,.10), transparent 60%), #07090d; --baslik-arka: rgba(0,0,0,.35); --cerceve: rgba(255,255,255,.07); --kose: 10px; --kucuk-kose: 6px; --kart-kose: 8px;
+    --ad-renk: #ffffff; --soluk: #7d8796; --yazi1: #f2f5f9; --yazi2: #b4bcc8; --vurgu: #00e676; --vurgu-ustu: #04130a; --vurgu-cerceve: rgba(0,230,118,.45); --vurgu-yazi: #00d1ff;
+    --iyi: #00e676; --kart: rgba(255,255,255,.035); --kart-uzerin: rgba(0,230,118,.07); --kart-uzerin-cerceve: rgba(0,230,118,.45); --ikon-arka: rgba(0,230,118,.10); --ikon-renk: #00e676;
+    --alan: rgba(0,0,0,.4); --sira-arka: linear-gradient(90deg, rgba(0,230,118,.12), rgba(0,209,255,.05)); --dugme-arka: #00e676; --dugme-parlama: 0 0 18px rgba(0,230,118,.55); --grafik-dolgu: rgba(0,230,118,.14);
+    --ping-parlama: 0 0 18px rgba(0,230,118,.55); --dis-parlama: 0 0 0 1px rgba(0,230,118,.12), 0 0 60px rgba(0,230,118,.08); }
+  .neon .ad { letter-spacing: .2em; }
+  .neon .sekme.aktif { color: #00e676; text-shadow: 0 0 10px rgba(0,230,118,.6); }
+  .neon .kart .kutu { box-shadow: inset 0 0 0 1px rgba(0,230,118,.25); }
+
+  /* ---- C: Sade Pro (Blitz / Mobalytics tarzı) ---- */
+  .sade { --arka: #0f1116; --baslik-arka: #0f1116; --cerceve: #20242d; --kose: 12px; --kucuk-kose: 8px; --kart-kose: 10px;
+    --ad-renk: #e8ebf1; --soluk: #79808f; --yazi1: #eef0f4; --yazi2: #aab0bc; --vurgu: #22c55e; --vurgu-ustu: #ffffff; --vurgu-cerceve: #2a3a30; --vurgu-yazi: #7aa2ff;
+    --iyi: #22c55e; --kart: #161920; --kart-uzerin: #1b1f27; --kart-uzerin-cerceve: #2c313c; --ikon-arka: #1f2430; --ikon-renk: #e8ebf1;
+    --alan: #12141a; --sira-arka: #15201a; --dugme-arka: #22c55e; --grafik-dolgu: rgba(34,197,94,.10); }
+  .sade .ad { letter-spacing: .06em; font-weight: 600; }
+  .sade .sekme { text-transform: none; letter-spacing: 0; font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif; font-size: 13px; }
+  .sade .sekme.aktif { background: #1b1f27; border-radius: 8px 8px 0 0; }
+  .sade .dugme { font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif; letter-spacing: 0; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Riot Plus için tema taslakları</h1>
+<p class="alt">Üçü de aynı ekran (Düzelt sekmesi). Kartların üzerine gelip deneyebilirsin. Beğendiğini söyle, uygulamayı ona göre baştan çizeyim.</p>
+
+<template id="ekran">
+  <div class="baslik">
+    <img src="logo.png" alt="">
+    <span class="ad">RIOT PLUS</span><span class="surum">v3</span>
+    <span class="bosluk"></span>
+    <span class="dil"><span class="aktif">TR</span><span>EN</span></span>
+    <span class="pd ikon">&#xE921;</span><span class="pd kapat ikon">&#xE8BB;</span>
+  </div>
+  <div class="ust">
+    <div>
+      <div class="ping-etiket">İnternet</div>
+      <div class="ping">5<small>ms</small></div>
+    </div>
+    <svg class="grafik" viewBox="0 0 170 38" preserveAspectRatio="none">
+      <path d="M0 30 L10 29 L20 31 L30 28 L40 30 L50 27 L60 29 L70 22 L80 28 L90 30 L100 29 L110 26 L120 29 L130 30 L140 28 L150 29 L160 27 L170 29 L170 38 L0 38 Z"/>
+      <polyline points="0,30 10,29 20,31 30,28 40,30 50,27 60,29 70,22 80,28 90,30 100,29 110,26 120,29 130,30 140,28 150,29 160,27 170,29"/>
+    </svg>
+    <div class="ping-alt">modem &lt;1 ms · son 1 dk ort. 5 ms · kayıp %0</div>
+  </div>
+  <div class="durumlar">
+    <span class="cip"><i></i>Riot Client <b>açık</b></span>
+    <span class="cip"><i></i>LoL <b>açık</b></span>
+    <span class="cip"><i class="yok"></i>Maç <b>yok</b></span>
+  </div>
+  <div class="sekmeler">
+    <span class="sekme aktif"><span class="ikon">&#xE90F;</span>Düzelt</span>
+    <span class="sekme"><span class="ikon">&#xE945;</span>Otomatik</span>
+  </div>
+  <div class="kartlar">
+    <div class="kart"><span class="kutu ikon">&#xE7F4;</span><div><h3>Ekrana gelmiyor</h3><p>Yalnız arayüzü yeniden başlatır; giriş ve parti korunur.</p></div><span class="tus">1</span></div>
+    <div class="kart"><span class="kutu ikon">&#xE895;</span><div><h3>Yükleme ekranında takıldı</h3><p>Ekranı tazeler ya da kapatıp yeniden bağlar.</p></div><span class="tus">2</span></div>
+    <div class="kart"><span class="kutu ikon">&#xE768;</span><div><h3>LoL'u aç</h3><p>Kapalıysa başlatır, açıksa öne getirir.</p></div><span class="tus">3</span></div>
+    <div class="kart tehlike"><span class="kutu ikon">&#xE7E8;</span><div><h3>Tamamen kapat</h3><p>LoL + Riot Client süreçleri (Vanguard'a dokunmaz).</p></div><span class="tus">4</span></div>
+    <div class="kart sira-karti"><span class="kutu ikon">&#xE716;</span><div><h3>Sıraya gir</h3><p>Lobi + roller + sıra; LoL kapalıysa açar.</p></div>
+      <div class="secimler">
+        <span class="acilir">Dereceli Tek/Çift <span class="ikon">&#xE70D;</span></span>
+        <span class="acilir"><span>1.</span>Alt <span class="ikon">&#xE70D;</span></span>
+        <span class="acilir"><span>2.</span>Orta <span class="ikon">&#xE70D;</span></span>
+        <span class="dugme">SIRAYA GİR</span>
+      </div>
+    </div>
+  </div>
+  <div class="gunluk">
+    <div><time>21:42:04</time><span class="a">Lobi açılıyor: Dereceli Tek/Çift…</span></div>
+    <div><time>21:42:07</time><span class="y">Sıradasın: Dereceli Tek/Çift (Alt / Orta).</span></div>
+    <div><time>21:43:17</time><span class="y">Maç bulundu, kabul ettim.</span></div>
+    <div><time>21:43:28</time><span class="y">Ban atıldı: Qiyana</span></div>
+  </div>
+  <div class="alt-bilgi"><span>1–5 tuşları · Esc kapatır</span><span>küçültünce de çalışır</span></div>
+</template>
+
+<div class="sira">
+  <div class="secenek"><div class="etiket">A · HEXTECH<small>LoL client'ına benzer: altın + turkuaz, köşeli</small></div><div class="pencere hextech"></div></div>
+  <div class="secenek"><div class="etiket">B · NEON<small>Logo yeşili, parlamalı, e-spor havası</small></div><div class="pencere neon"></div></div>
+  <div class="secenek"><div class="etiket">C · SADE PRO<small>Blitz / Mobalytics gibi temiz ve modern</small></div><div class="pencere sade"></div></div>
+</div>
+
+<script>
+  const sablon = document.getElementById('ekran');
+  document.querySelectorAll('.pencere').forEach(p => p.appendChild(sablon.content.cloneNode(true)));
+</script>
+</body>
+</html>

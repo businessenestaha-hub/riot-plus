@@ -1,0 +1,78 @@
+{
+    "dil":  "tr",
+    "kabul":  true,
+    "ban":  true,
+    "banListe":  [
+                     238,
+                     157,
+                     777
+                 ],
+    "pick":  true,
+    "kilitle":  true,
+    "bekleSn":  0,
+    "sira":  420,
+    "rol1":  "",
+    "rol2":  "FILL",
+    "pickListe":  {
+                      "top":  [
+                                  0,
+                                  0,
+                                  0
+                              ],
+                      "jungle":  [
+                                     0,
+                                     0,
+                                     0
+                                 ],
+                      "middle":  [
+                                     103,
+                                     134,
+                                     61
+                                 ],
+                      "bottom":  [
+                                     0,
+                                     0,
+                                     0
+                                 ],
+                      "utility":  [
+                                      0,
+                                      0,
+                                      0
+                                  ],
+                      "genel":  [
+                                    99,
+                                    0,
+                                    0
+                                ]
+                  },
+    "custom":  false,
+    "customGorsel":  {
+
+                     },
+    "customAd":  {
+
+                 },
+    "customRakip":  false,
+    "customSecim":  {
+                        "236":  "6968ac30-451d-49b5-bc9a-23b8e70a7a53",
+                        "98":  "dd8f7a3b-a0c0-4fc5-812d-43a40158a2f0",
+                        "16":  "2f1d7cc2-add6-463c-a25b-c575533a7247",
+                        "876":  "b18044c9-8d89-4ed7-a3b8-af6e39e04a81",
+                        "157":  "a39934f0-e613-4f42-95e9-54184caffc5c",
+                        "29":  "eaf73934-b2da-4009-8053-f05c5eda22ce",
+                        "222":  "8e334514-2620-4788-b99c-0d5fbb612a02",
+                        "412":  "cb22a206-d19a-4d6d-b396-9ba4eed4f8ef",
+                        "134":  "b2439444-a6f3-4fcc-8624-138671b3c873",
+                        "86":  "b0d7a1de-5e76-4d8c-b956-b88faaeab039",
+                        "67":  "dab2f054-868a-48c5-a32e-632a1e439271",
+                        "122":  "0160980c-693d-497b-b6c2-7ef3bdfdf413",
+                        "117":  "3941eb30-e9eb-448e-b435-9455f792a567",
+                        "141":  "d7076f00-50bd-4966-8607-54448355c006",
+                        "22":  "55f64b80-e6c2-4203-bb0a-f2480d3f94aa",
+                        "91":  "a9547dc6-0bfc-480c-8cb1-5474516f94cb",
+                        "523":  "b68000ee-0219-4417-88ed-da83eea55374",
+                        "777":  "ba4c1ba8-8e54-452c-a8ce-1e370fcb50c9",
+                        "350":  "4989c813-c0f4-4daa-8f4b-57fb999c46b1"
+                    },
+    "ltkKapat":  true
+}
