@@ -1513,10 +1513,13 @@ function Rose-Aktar {
             [void](New-Item -ItemType Directory -Force $klasor)
             $manYol = Join-Path $klasor 'rose_mod_targets.json'
             # Okunamayan manifestin üstüne yazılmaz (Rose'un oradaki modları kaybolurdu); hata sayılır
-            $man = if (Test-Path -LiteralPath $manYol) { Json-Oku $manYol } else { $null }
-            if (-not ($man -is [Collections.IDictionary])) { $man = New-Object 'Collections.Generic.Dictionary[string,object]' }
+            # Not: kaplar New-Object ile değil ::new() ile kurulur. New-Object'in (ve boru hattının) verdiği nesne PSObject
+            # sarmalı taşır; sözlüğe öyle girer ve JavaScriptSerializer "döngüsel başvuru" hatası verir (10 Kas'ta böyle oldu).
+            $man = $null
+            if (Test-Path -LiteralPath $manYol) { $man = $script:Json.DeserializeObject([IO.File]::ReadAllText($manYol)) }
+            if (-not ($man -is [Collections.IDictionary])) { $man = [Collections.Generic.Dictionary[string,object]]::new() }
             $modlar = $man['mods']
-            if (-not ($modlar -is [Collections.IDictionary])) { $modlar = New-Object 'Collections.Generic.Dictionary[string,object]'; $man['mods'] = $modlar }
+            if (-not ($modlar -is [Collections.IDictionary])) { $modlar = [Collections.Generic.Dictionary[string,object]]::new(); $man['mods'] = $modlar }
             $var = $false
             foreach ($k in @($modlar.Keys)) {
                 $g = $modlar[$k]
@@ -1526,8 +1529,17 @@ function Rose-Aktar {
                 }
             }
             if ($var) { $vardi++; continue }
-            $taban = Rose-Dosya-Adi $m.Ad; $ad = $taban; $n = 2
-            while ($modlar.ContainsKey($ad) -or (Test-Path -LiteralPath (Join-Path $klasor "$ad.fantome"))) { $ad = "$taban ($n)"; $n++ }
+            $taban = Rose-Dosya-Adi ([string]$m.Ad)
+            # Yarım kalmış bir aktarmanın bıraktığı kopyalar (dosya var, manifestte kaydı yok) silinir; yoksa her denemede
+            # "ad (2)", "ad (3)" diye birikir. Manifestte kaydı olan dosyaya dokunulmaz.
+            $kayitli = @{}
+            foreach ($k in @($modlar.Keys)) { $kayitli["$k".ToLowerInvariant()] = $true; $g = $modlar[$k]; if (($g -is [Collections.IDictionary]) -and "$($g['name'])") { $kayitli["$($g['name'])".ToLowerInvariant()] = $true } }
+            foreach ($aday in @($taban) + @(2..9 | ForEach-Object { "$taban ($_)" })) {
+                $y = Join-Path $klasor "$aday.fantome"
+                if (-not $kayitli[$aday.ToLowerInvariant()] -and (Test-Path -LiteralPath $y)) { Remove-Item -LiteralPath $y -Force -ErrorAction SilentlyContinue }
+            }
+            $ad = $taban; $n = 2
+            while ($kayitli[$ad.ToLowerInvariant()] -or (Test-Path -LiteralPath (Join-Path $klasor "$ad.fantome"))) { $ad = "$taban ($n)"; $n++ }
             $hedef = Join-Path $klasor "$ad.fantome"
             $gecici = Join-Path $klasor ".riotplus-$([Guid]::NewGuid().ToString('N')).tmp"   # noktayla başlayanı Rose mod saymaz
             Copy-Item -LiteralPath $kaynak -Destination $gecici -Force
@@ -1537,25 +1549,32 @@ function Rose-Aktar {
                 if (-not @($z.Entries | Where-Object { $_.FullName.Replace('\', '/').TrimStart('/') -ieq 'META/info.json' }).Count) {
                     $e = $z.CreateEntry('META/info.json')
                     $w = New-Object IO.StreamWriter($e.Open(), (New-Object Text.UTF8Encoding($false)))
-                    try { $w.Write($script:Json.Serialize(@{ Name = $m.Ad; Author = 'Unknown'; Version = '1.0.0'; Description = '' })) } finally { $w.Dispose() }
+                    try { $bilgi = [Collections.Generic.Dictionary[string,object]]::new()
+                    $bilgi['Name'] = [string]$m.Ad; $bilgi['Author'] = 'Unknown'; $bilgi['Version'] = '1.0.0'; $bilgi['Description'] = ''
+                    $w.Write($script:Json.Serialize($bilgi)) } finally { $w.Dispose() }
                 }
             } finally { $z.Dispose() }
-            $ozet = (Get-FileHash -LiteralPath $gecici -Algorithm SHA256).Hash.ToLowerInvariant()
-            Move-Item -LiteralPath $gecici -Destination $hedef -Force; $gecici = $null
-            # Hedef skinler: modun yazdığı skin numaraları (okunamadıysa klasik); skin kimliği = şampiyon * 1000 + numara
-            $numaralar = @($m.Skinler | Where-Object { $null -ne $_ }); if (-not $numaralar.Count) { $numaralar = @(0) }
-            $girdi = New-Object 'Collections.Generic.Dictionary[string,object]'
-            $girdi['name'] = $ad
-            $girdi['displayName'] = $m.Ad
-            $girdi['targets'] = [object[]]@($numaralar | ForEach-Object { [int]$m.Ana * 1000 + [int]$_ })
-            $girdi['updatedAt'] = [Math]::Round(([DateTime]::UtcNow - [DateTime]'1970-01-01').TotalSeconds, 3)
+            $ozet = [string](Get-FileHash -LiteralPath $gecici -Algorithm SHA256).Hash.ToLowerInvariant()
+            # Hedef skinler: modun yazdığı skin numaraları (okunamadıysa klasik); skin kimliği = şampiyon * 1000 + numara.
+            # Değerler boru hattından geçirilmez: oradan çıkan değer PSObject sarmalı taşır ve JavaScriptSerializer sarmalı
+            # seri hale getirmeye çalışıp "döngüsel başvuru" hatası verir (10 Kas: ilk sürümde aktarma bu yüzden olmadı).
+            $hedefler = [Collections.Generic.List[int]]::new()
+            foreach ($num in @($m.Skinler)) { if ($null -ne $num) { $hedefler.Add([int]$m.Ana * 1000 + [int]$num) } }
+            if (-not $hedefler.Count) { $hedefler.Add([int]$m.Ana * 1000) }
+            $girdi = [Collections.Generic.Dictionary[string,object]]::new()
+            $girdi['name'] = [string]$ad
+            $girdi['displayName'] = [string]$m.Ad
+            $girdi['targets'] = [int[]]$hedefler.ToArray()
+            $girdi['updatedAt'] = [double][Math]::Round(([DateTime]::UtcNow - [DateTime]'1970-01-01').TotalSeconds, 3)
             $girdi['sourceHash'] = $ozet
-            $girdi['riotPlusLtkId'] = $m.Id
-            $modlar[$ad] = $girdi
-            $man['version'] = 1
+            $girdi['riotPlusLtkId'] = [string]$m.Id
+            $modlar[[string]$ad] = $girdi
+            $man['version'] = [int]1
             if (-not $man.ContainsKey('championId')) { $man['championId'] = [int]$m.Ana }
-            if (-not $man.ContainsKey('targets')) { $man['targets'] = [object[]]@() }
+            if (-not $man.ContainsKey('targets')) { $man['targets'] = [int[]]@() }
+            # Önce manifest yazılır, sonra dosya yerine konur: manifest yazılamazsa klasörde sahipsiz kopya kalmaz
             Json-Yaz $manYol $man
+            Move-Item -LiteralPath $gecici -Destination $hedef -Force; $gecici = $null
             try { [void][ModWad]::GorselCikar($kaynak, (Join-Path $klasor "$ad.png")) } catch {}   # Rose'un menüsündeki önizleme
             $eklendi += "$($m.Ad) ($(Sampiyon-Adi $m.Ana))"
         } catch {
