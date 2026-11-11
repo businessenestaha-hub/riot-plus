@@ -1348,6 +1348,8 @@ $script:CustomIstek = $null        # @{ '<şampiyon kimliği>' = modId ('' = kla
 $script:EklenecekDosyalar = @()
 $script:KodId = $null
 $script:AcIstek = $null              # Lol-Kipli-Ac'ın açacağı kip ('ltk' | 'rose' | 'duz')
+$script:RoseModSayi = @{}           # şampiyon kimliği -> Rose'daki custom sayısı (Rose-Liste-Olustur doldurur)
+$script:RoseOdak = $null             # Rose sayfasında seçili şampiyon kimliği (metin)
 $script:KaynakIstek = $null          # Kaynak-Degistir'in geçeceği kaynak ('ltk' | 'rose')
 $script:RoseDurum = @{ Kurulu = $false; Acik = $false }   # Rose-Durum-Oku doldurur
 
@@ -1426,6 +1428,37 @@ function Rose-Durdur {
     # Açık bir client eklentileri çoktan yüklemiştir; kanca kalksa da client yeniden başlayana dek içinde kalırlar
     if (Surec 'LeagueClientUx') { Yaz (T "LoL açık: Rose'un eklentileri client kapanana kadar içinde kalır. Hesap değiştireceksen 'Hepsini kapat'la kapatıp yeniden aç." "LoL is open: Rose's plugins stay in the client until it closes. If you're switching accounts, use 'Close everything' and reopen.") $RenkTuruncu }
     return $true
+}
+# Rose'daki custom skinler: mods\skins\<şampiyon>000\rose_mod_targets.json kayıtları (Rose'a aktar'ın koydukları ve
+# Rose'un kendi menüsünden eklenenler). Yalnız okunur; LTK'ya ve Rose'a dokunmaz, ikisi kapalıyken de çalışır.
+# Dönüş: '<şampiyon kimliği>' -> @( @{ Ad; Dosya; Hedefler; Klasik; RoseSurumu; Gorsel } )
+function Rose-Modlar {
+    $g = [ordered]@{}
+    $kok = Join-Path $RoseVeri 'mods\skins'
+    foreach ($d in @(Get-ChildItem -LiteralPath $kok -Directory -ErrorAction SilentlyContinue | Sort-Object Name)) {
+        $no = 0
+        if (-not [int]::TryParse($d.Name, [ref]$no) -or $no -lt 1000) { continue }
+        $id = [int][Math]::Floor($no / 1000)
+        if (-not $script:SampiyonKod[$id]) { continue }
+        $y = Join-Path $d.FullName 'rose_mod_targets.json'
+        if (-not (Test-Path -LiteralPath $y)) { continue }
+        try { $j = Json-Oku $y } catch { continue }
+        if (-not ($j['mods'] -is [Collections.IDictionary])) { continue }
+        foreach ($k in @($j['mods'].Keys)) {
+            $e = $j['mods'][$k]
+            if (-not ($e -is [Collections.IDictionary])) { continue }
+            $dosyaAd = if ("$($e['name'])") { "$($e['name'])" } else { "$k" }
+            $dosya = Join-Path $d.FullName "$dosyaAd.fantome"
+            if (-not (Test-Path -LiteralPath $dosya) -and -not (Test-Path -LiteralPath (Join-Path $d.FullName $dosyaAd))) { continue }   # kaydı kalmış, dosyası gitmiş
+            $hedefler = @(@($e['targets']) | Where-Object { $null -ne $_ } | ForEach-Object { [int]$_ })
+            if (-not $hedefler.Count) { $hedefler = @($id * 1000) }
+            $m = @{ Ad = $(if ("$($e['displayName'])") { "$($e['displayName'])" } else { $dosyaAd }); Dosya = $dosya; Hedefler = $hedefler
+                    Klasik = ($hedefler -contains ($id * 1000)); RoseSurumu = ("$($e['riotPlusBicim'])" -eq 'klasik'); Gorsel = (Join-Path $d.FullName "$dosyaAd.png") }
+            if (-not $g.Contains("$id")) { $g["$id"] = New-Object Collections.ArrayList }
+            [void]$g["$id"].Add($m)
+        }
+    }
+    return $g
 }
 # Rose'un LTK kütüphanesine kendi koyduğu girdiler (oyun için kurduğu ve sonraki maça sakladığı skinler). LTK kipinde
 # listede gösterilmez: bunlar Rose'un işi, senin eklediğin modlar değil.
@@ -1685,6 +1718,7 @@ function Rose-Aktar {
     if ($hata.Count) { Yaz ((T 'Aktarılamadı: ' "Couldn't copy: ") + ($hata -join '; ')) $RenkTuruncu }
     if ($sinirli.Count) { Yaz ((T "$($sinirli.Count) mod belirli bir skine yazıyor ve Rose sürümü üretilemedi ($uretimNot): Rose'da dokuları gelir, efektleri (ulti, imza, VFX) gelmez. Python ile 'pip install zstandard xxhash' kuruluysa kendiliğinden üretilir; ya da hazır Rose sürümünü rose-surumleri klasörüne koyup yeniden bas. " "$($sinirli.Count) mod(s) target a specific skin and no Rose version could be made ($uretimNot): textures show in Rose, effects don't. With Python and 'pip install zstandard xxhash' it is made automatically; or put a ready Rose version into the rose-surumleri folder and press again. ") + ($sinirli -join ', ')) $RenkTuruncu }
     if ($eklendi.Count) { Yaz (T "Rose'da: [Rose sürümü] yazanları ve klasik skin modlarını şampiyonun KLASİK skininin üstüne gelip custom menüsünden seç; ötekileri modun yazdığı skinin üstünde." "In Rose: pick the ones marked [Rose version] and base-skin mods on the champion's BASE skin from the custom menu; the others on the skin they target.") $RenkSoluk }
+    Custom-Yenile
 }
 
 function Rose-Durum-Oku { $script:RoseDurum = @{ Kurulu = (Rose-Kurulu); Acik = (Rose-Acik) } }
@@ -2886,7 +2920,6 @@ $PencereXaml = @'
             </Border>
             <!-- Rose kipi: mod listesi yerine Rose'un durumu ve başlat / durdur -->
             <StackPanel x:Name="RosePanel" DockPanel.Dock="Top" Visibility="Collapsed">
-              <TextBlock x:Name="RoseAciklama" FontSize="12.5" Foreground="#8C95A1" TextWrapping="Wrap" Margin="0,0,0,10"/>
               <Border Style="{StaticResource Grup}" Margin="0,0,0,8">
                 <Grid Margin="14,10,12,11">
                   <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -2897,7 +2930,16 @@ $PencereXaml = @'
                   <Button x:Name="RoseDugme" Grid.Column="1" Style="{StaticResource Kucuk}" VerticalAlignment="Center"/>
                 </Grid>
               </Border>
-              <TextBlock x:Name="RoseUyari" FontSize="11.5" Foreground="#8C95A1" TextWrapping="Wrap" Margin="2,2,2,0"/>
+              <TextBlock x:Name="RoseAciklama" FontSize="11.5" Foreground="#8C95A1" TextWrapping="Wrap" Margin="2,0,2,8"/>
+              <TextBlock x:Name="RoseUyari" Visibility="Collapsed"/>
+              <!-- Rose'daki custom'lar: Rose'a aktarılan (ve Rose'un kendi menüsünden eklenen) custom skinler; altta şampiyon şeridi + kartlar -->
+              <Grid Margin="2,0,2,8">
+                <TextBlock x:Name="RoseModBaslik" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <TextBlock x:Name="RoseAktarBag" Style="{StaticResource Baglanti}" Foreground="#1FBF62" FontSize="12.5" Margin="0,0,14,0"/>
+                  <TextBlock x:Name="RoseKlasorBag" Style="{StaticResource Baglanti}" Foreground="#1FBF62" FontSize="12.5"/>
+                </StackPanel>
+              </Grid>
             </StackPanel>
             <ScrollViewer x:Name="SampiyonKaydir" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Focusable="False" Margin="-4,0,-4,8">
               <StackPanel x:Name="SampiyonSerit" Orientation="Horizontal" Margin="4"/>
@@ -2981,7 +3023,7 @@ foreach ($ad in 'Kok', 'Kahraman', 'KahramanResim', 'KahramanKarart', 'KahramanA
                  'CustomAd', 'CustomNot', 'AnahtarCustom', 'CustomGorunum', 'CustomKaydir', 'CustomListe',
                  'ModEkle', 'LtkAc', 'LtkGuncelle', 'CustomBilgi', 'AnaSayfa', 'SampiyonKaydir', 'SampiyonSerit', 'GorselDugme',
                  'GuncelleSerit', 'GuncelleYazi', 'GuncelleBaglanti', 'SekmeHap', 'BaslikCam', 'DilTRKutu', 'DilENKutu', 'GorselCam', 'RakipYazi', 'RakipNot', 'AnahtarRakip', 'LtkKapatYazi', 'LtkKapatNot', 'AnahtarLtkKapat',
-                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt', 'RoseAktar') {
+                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt', 'RoseAktar', 'RoseModBaslik', 'RoseAktarBag', 'RoseKlasorBag') {
     Set-Variable -Name $ad -Value (Bul $ad) -Scope Script
 }
 $Pencere.Title = $Baslik
@@ -3321,8 +3363,17 @@ function Kahraman-Guncelle {
         $not = $v.Not
     }
     # Custom sayfası açıkken: sayfada seçili şampiyon ve onun custom'ı
-    $sayfa = $CustomGorunum.Visibility -eq 'Visible' -and $script:CustomOdak -and $script:CustomOdak -ne 'diger'
-    if ($sayfa) {
+    $rosede = $CustomGorunum.Visibility -eq 'Visible' -and (Rose-Kipi)
+    $sayfa = $CustomGorunum.Visibility -eq 'Visible' -and -not $rosede -and $script:CustomOdak -and $script:CustomOdak -ne 'diger'
+    if ($rosede) {
+        # Rose sayfası: listede seçili şampiyon ve Rose'da kaç custom'ı olduğu
+        $cm = $null; $buyuk = 40; $karart = $false
+        if ($script:RoseOdak) {
+            $id = [int]$script:RoseOdak; $ad = Sampiyon-Adi $id
+            $n = [int]$script:RoseModSayi["$id"]
+            $not = T "Rose'da $n custom; LoL'de custom menüsünden seçilir" "$n customs in Rose; picked from the custom menu in LoL"
+        } else { $ad = 'Rose'; $not = T "Rose'da henüz custom yok" 'No customs in Rose yet' }
+    } elseif ($sayfa) {
         $id = [int]$script:CustomOdak; $ad = Sampiyon-Adi $id; $buyuk = 40; $karart = $false
         $cm = Custom-Secili (Custom-Gruplar)[$script:CustomOdak]
         $not = if ($cm) { "Custom: $($cm.Ad)" } else { T 'Klasik skin; custom seçilmedi' 'Base skin; no custom picked' }
@@ -3950,11 +4001,11 @@ function Kaynak-Boya {
     }
     $RosePanel.Visibility = if ($rose) { 'Visible' } else { 'Collapsed' }
     $LtkAlt.Visibility = if ($rose) { 'Collapsed' } else { 'Visible' }
-    $CustomKaydir.Visibility = if ($rose) { 'Collapsed' } else { 'Visible' }
-    if ($rose) { $SampiyonKaydir.Visibility = 'Collapsed' }
+    $CustomKaydir.Visibility = 'Visible'   # Rose kipinde Rose'daki custom'ların kartları (Custom-Liste-Olustur)
 }
 function Rose-Panel-Guncelle {
-    $RoseAciklama.Text = T "Rose oyunun kendi skinlerini açar: skini şampiyon seçiminde LoL'ün içinden seçersin, Rose oyuna yükler. Custom modlarını da Rose'un LoL içindeki menüsünden eklersin. Rose LTK Manager'ı kendisi açıp kapattığı için bu kipte Riot Plus LTK'ya dokunmaz; LTK sayfasındaki seçimlerin durur ama Rose her maçta onları kapatır." "Rose unlocks the game's own skins: pick one in champ select inside LoL and Rose loads it. Add custom mods from Rose's menu inside LoL too. Rose opens and closes LTK Manager itself, so Riot Plus leaves LTK alone in this mode; your picks on the LTK page are kept, but Rose turns them off each game."
+    $RoseAciklama.Text = T "Skini şampiyon seçiminde LoL'ün içinden seçersin. Bu kipte Riot Plus LTK'ya dokunmaz. Aşağıdakiler Rose'daki custom'ların; onlar da LoL'de custom menüsünden seçilir." "Pick your skin in champ select, inside LoL. Riot Plus leaves LTK alone in this mode. Below are your customs in Rose; those are picked from the custom menu in LoL too."
+    $RoseAciklama.ToolTip = T "Rose oyunun kendi skinlerini açar ve LTK Manager'ı kendisi açıp kapatır. LTK sayfasındaki seçimlerin durur ama Rose her maçta onları kapatır; custom'ların Rose'da da gelsin diye 'LTK'dan aktar'ı kullan." "Rose unlocks the game's own skins and opens and closes LTK Manager itself. Your picks on the LTK page are kept, but Rose turns them off each game; use 'Copy from LTK' so your customs work in Rose too."
     $d = $script:RoseDurum
     $dugme = $null
     if (-not $d.Kurulu) {
@@ -3974,7 +4025,7 @@ function Rose-Panel-Guncelle {
         $dugme = @((T "Rose'u başlat" 'Start Rose'), 'baslat')
     }
     if ($dugme) { $RoseDugme.Content = $dugme[0]; $RoseDugme.Tag = $dugme[1]; $RoseDugme.Visibility = 'Visible' } else { $RoseDugme.Visibility = 'Collapsed' }
-    $RoseUyari.Text = T "Rose ayrı bir programdır ve yönetici olarak çalışır; başlatırken ve durdururken Windows izin sorar (Rose'un kendi ayarında 'Windows ile başlat' açıksa başlatırken sormaz). Durdurmanın temiz yolu tepsideki Rose simgesinden Quit; buradaki düğme süreci sonlandırır." "Rose is a separate program and runs as administrator; Windows asks for permission when starting and stopping it (not on start if Rose's own 'start with Windows' is on). The clean way to stop it is Quit on Rose's tray icon; the button here ends the process."
+    $RoseDugme.ToolTip = T "Rose ayrı bir programdır ve yönetici olarak çalışır; başlatırken ve durdururken Windows izin sorar (Rose'un kendi ayarında 'Windows ile başlat' açıksa başlatırken sormaz). Durdurmanın temiz yolu tepsideki Rose simgesinden Quit; buradaki düğme süreci sonlandırır." "Rose is a separate program and runs as administrator; Windows asks for permission when starting and stopping it (not on start if Rose's own 'start with Windows' is on). The clean way to stop it is Quit on Rose's tray icon; the button here ends the process."
 }
 function Custom-Bilgi-Guncelle {
     Kaynak-Boya
@@ -3998,9 +4049,57 @@ function Custom-Bilgi-Guncelle {
     $CustomBilgi.Text = $metin
 }
 
+# Rose sayfasının listesi: şampiyon şeridi + seçili şampiyonun Rose'daki custom'ları. Yalnız gösterir; seçim LoL'ün içinde yapılır.
+function Rose-Serit-Ogesi($k, $adet) {
+    $kok = New-Object Windows.Controls.Grid
+    $kok.Width = 34; $kok.Height = 34; $kok.Margin = '0,0,5,0'; $kok.Cursor = 'Hand'; $kok.Background = Firca '#00000000'; $kok.Tag = $k
+    [void]$kok.Children.Add((Yuvarlak-Resim (Gorsel 'ikon' $script:SampiyonKod[[int]$k]) 34 34 6))
+    $kok.ToolTip = (Sampiyon-Adi ([int]$k)) + ': ' + (T "$adet custom" "$adet customs")
+    if ($k -eq $script:RoseOdak) {
+        $c = New-Object Windows.Controls.Border
+        $c.CornerRadius = 8; $c.BorderThickness = 2; $c.BorderBrush = Firca $RenkYesil; $c.Margin = '-3'; $c.IsHitTestVisible = $false
+        [void]$kok.Children.Add($c)
+    } else { $kok.Opacity = 0.55 }
+    $kok.Add_MouseEnter({ $this.Opacity = 1 })
+    $kok.Add_MouseLeave({ if ($this.Tag -ne $script:RoseOdak) { $this.Opacity = 0.55 } })
+    $kok.Add_MouseLeftButtonUp({ if (Basildi $this) { $script:RoseOdak = "$($this.Tag)"; Custom-Liste-Olustur; $CustomKaydir.ScrollToTop() } })
+    return $kok
+}
+function Rose-Liste-Olustur {
+    $gruplar = Rose-Modlar
+    $anahtarlar = @($gruplar.Keys | Sort-Object { Sampiyon-Adi ([int]$_) })
+    $toplam = 0; $script:RoseModSayi = @{}
+    foreach ($k in $anahtarlar) { $toplam += $gruplar[$k].Count; $script:RoseModSayi["$k"] = $gruplar[$k].Count }
+    $RoseModBaslik.Text = if ($toplam) { T "Rose'daki custom'lar · $toplam mod, $($anahtarlar.Count) şampiyon" "Customs in Rose · $toplam mods, $($anahtarlar.Count) champions" } else { T "Rose'daki custom'lar" 'Customs in Rose' }
+    if (-not $script:RoseOdak -or -not $gruplar.Contains($script:RoseOdak)) {
+        $simdi = "$(Custom-Sampiyon)"
+        $script:RoseOdak = if ($gruplar.Contains($simdi)) { $simdi } elseif ($anahtarlar.Count) { $anahtarlar[0] } else { $null }
+    }
+    foreach ($k in $anahtarlar) { [void]$SampiyonSerit.Children.Add((Rose-Serit-Ogesi $k $gruplar[$k].Count)) }
+    $SampiyonKaydir.Visibility = if ($anahtarlar.Count) { 'Visible' } else { 'Collapsed' }
+    $k = $script:RoseOdak
+    if (-not $k) {
+        $bos = New-Object Windows.Controls.TextBlock
+        $bos.TextWrapping = 'Wrap'; $bos.Foreground = Firca $RenkSoluk; $bos.Margin = '0,6'
+        $bos.Text = T "Rose'da henüz custom yok. 'LTK'dan aktar'a basarsan LTK'daki modların buraya kopyalanır (LTK'yı açmadan)." "No customs in Rose yet. 'Copy from LTK' copies your LTK mods here (without opening LTK)."
+        [void]$CustomListe.Children.Add($bos)
+        return
+    }
+    $id = [int]$k
+    foreach ($m in @($gruplar[$k] | Sort-Object { $_.Ad })) {
+        $alt = if ($m.Klasik) { T 'Klasik skinin üstünde seçilir' 'Picked on the base skin' }
+               else { $num = [int]$m.Hedefler[0] % 1000; T "$(Skin-Adi $id $num) skininin üstünde seçilir" "Picked on $(Skin-Adi $id $num)" }
+        if ($m.RoseSurumu) { $alt += T ' · Rose sürümü' ' · Rose version' }
+        $resim = Yerel-Gorsel $m.Gorsel
+        if (-not $resim) { $resim = Gorsel 'splash' $script:SampiyonKod[$id] }
+        $bosluk = New-Object Windows.Controls.Border   # sağdaki seçim işareti yerine boşluk: bu kartlar tıklanmaz
+        $bosluk.Width = 4
+        [void]$CustomListe.Children.Add((Secenek-Karti $m.Ad $alt $false $resim $false $bosluk))
+    }
+}
 function Custom-Liste-Olustur {
     $SampiyonSerit.Children.Clear(); $CustomListe.Children.Clear()
-    if (Rose-Kipi) { Custom-Bilgi-Guncelle; Kahraman-Guncelle; return }
+    if (Rose-Kipi) { Rose-Liste-Olustur; Custom-Bilgi-Guncelle; Kahraman-Guncelle; return }
     $gruplar = Custom-Gruplar
     $anahtarlar = @(@($gruplar.Keys | Where-Object { $_ -ne 'diger' } | Sort-Object { Sampiyon-Adi ([int]$_) }) + @(if ($gruplar.ContainsKey('diger')) { 'diger' }))
     # Odak: önceki seçim, yoksa şu anki şampiyon, yoksa ilk sıradaki
@@ -4151,6 +4250,18 @@ $CustomGorunum.Add_Drop({
 })
 $LtkAc.Add_Click({ if (Ltk-Kurulu) { Start-Process -FilePath $LtkExe } })
 Cevir $RoseAktar "Rose'a aktar" 'Copy to Rose'
+Cevir $RoseAktarBag "LTK'dan aktar" 'Copy from LTK'
+Cevir $RoseKlasorBag 'Klasörü aç' 'Open folder'
+Ipucu-Ver $RoseAktarBag "LTK'daki modlarını Rose'a kopyalar (yenileri ve güncellenenleri). LTK'yı açmaz, kaynağı değiştirmez." "Copies your LTK mods to Rose (new and updated ones). Doesn't open LTK or switch the source."
+Ipucu-Ver $RoseKlasorBag "Rose'un custom skin klasörü (şampiyon kimliği + 000 adlı klasörler)" "Rose's custom skin folder (folders named champion id + 000)"
+$RoseAktarBag.Add_MouseLeftButtonUp({ if (Basildi $this) { Kart-Bas 'roseaktar' } })
+$RoseKlasorBag.Add_MouseLeftButtonUp({
+    if (-not (Basildi $this)) { return }
+    $y = Join-Path $RoseVeri 'mods\skins'
+    if (-not (Test-Path -LiteralPath $y)) { $y = $RoseVeri }
+    if (Test-Path -LiteralPath $y) { Start-Process -FilePath 'explorer.exe' -ArgumentList ('"' + $y + '"') }
+    else { Yaz (T "Rose'un klasörü henüz yok; Rose'u bir kez çalıştır." "Rose's folder doesn't exist yet; run Rose once.") $RenkTuruncu }
+})
 Ipucu-Ver $RoseAktar "Buradaki modları Rose'un custom skin klasörüne kopyalar; Rose'la girdiğinde de seçebilirsin. Daha önce aktarılan yeniden kopyalanmaz. Belirli bir skine yazan modlar için Rose sürümü üretilir (klasik skinin üstünde seçilir; Python gerekir)." "Copies these mods into Rose's custom skin folder so you can pick them when playing with Rose too. Already copied ones are skipped."
 $RoseAktar.Add_Click({ Kart-Bas 'roseaktar' })
 # Kaynak seçici: iş zamanlayıcı kuyruğunda çalışır (Rose'u durdurmak / LTK'yı açmak beklemeli işler)
