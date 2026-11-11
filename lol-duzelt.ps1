@@ -15,6 +15,7 @@
 #   "LoL'ü aç" (LoL kapalıyken) sorar: LTK Manager ile / Rose ile / düz. Düz ve LTK açılışında Rose kapatılır, client'taki
 #   eklenti kancası kaldırılır; kalkmazsa LoL açılmaz. Riot Plus açılırken Rose kendiliğinden başlatılmaz.
 #   Custom skinler > "Rose'a aktar": LTK'daki .fantome modları Rose'un custom skin klasörüne kopyalar.
+#   11 Kas: 'Kurulum' sekmesi: LTK Manager / Rose / Python durumu ve kurma düğmeleri (hepsi resmi kaynağından, doğrulanarak).
 #   11 Kas: durum satırının altında giriş yapılan hesap (Riot ID) + Porofessor / League of Graphs bağlantıları;
 #   "Maç" satırı açıksa maç başlayınca Porofessor canlı maç sayfası açılır. Rose sayfasında Rose'daki custom'ların listesi.
 #   11 Kas: belirli bir skine yazan modlar için "Rose sürümü" (rose_surumu.py, Python ister; hazırları rose-surumleri\ klasöründen de alınır):
@@ -74,6 +75,10 @@ $PatcherBekleSn = 150                # LTK açıldıktan sonra patcher için en 
 $RoseExe        = 'C:\Program Files\Rose\Rose.exe'
 $RoseVeri       = Join-Path $env:LOCALAPPDATA 'Rose'
 $RoseIndirUrl   = 'https://github.com/Alban1911/Rose/releases/latest'
+$RoseSurumUrl   = 'https://api.github.com/repos/Alban1911/Rose/releases/latest'
+# Python (yalnız modların Rose sürümünü üretmek için): python.org'un resmi kurulum dosyası, yalnız kullanıcıya kurulur
+$PythonKurUrl   = 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe'
+$PythonImzaci   = 'CN=Python Software Foundation'
 $RoseAcilisSn   = 25                 # Rose başlatıldıktan sonra sürecinin görünmesi için en fazla bekleme
 # -----------------
 
@@ -810,6 +815,9 @@ function Calistir($islem) {
                 'kaynak'      { Kaynak-Degistir }
                 'ackip'       { Lol-Kipli-Ac }
                 'roseaktar'   { Rose-Aktar }
+                'rosekur'     { Rose-Kur }
+                'pykur'       { Python-Kur }
+                'hepsikur'    { Hepsini-Kur }
                 'modekle'     { Mod-Ekle }
                 'ltkkur'      { Ltk-Kur }
                 'cokme'       { Cokme-Isle }
@@ -1575,17 +1583,127 @@ function Rose-Dosya-Adi([string]$ad) {
 # Üretim Python ister (WAD içindeki dosya zstd ile sıkıştırılmış; PowerShell 5.1 açamaz). Python yoksa hazır sürümler
 # rose-surumleri\<mod slug'ı>.fantome olarak elle de konabilir. Dönüş: 'tamam' | 'gereksiz' | neden olmadığı.
 $RoseSurumKlasoru = Join-Path $PSScriptRoot 'rose-surumleri'
-$script:PythonYolu = $null
+$script:PythonYolu = $null      # $null = aranmadı, '' = yok
+$script:PythonParca = $null     # zstandard + xxhash kurulu mu ($null = bakılmadı)
+# Kısa süren bir komutun çıkış kodu (arayüzü en çok $ms kadar bekletir); başlatılamazsa ya da bitmezse -1
+function Surec-Kod([string]$exe, [string]$arg, [int]$ms = 8000) {
+    try {
+        $s = Start-Process -FilePath $exe -ArgumentList $arg -WindowStyle Hidden -PassThru -ErrorAction Stop
+        $null = $s.Handle
+        if (-not $s.WaitForExit($ms)) { try { $s.Kill() } catch {}; return -1 }
+        return [int]$s.ExitCode
+    } catch { return -1 }
+}
+# Uzun süren bir komutu (kurulum) çalıştırır; beklerken arayüz donmaz. Çıkış kodu; başlatılamazsa $null
+function Surec-Calis([string]$exe, [string]$arg, [switch]$Yonetici, [switch]$Gizli) {
+    $p = @{ FilePath = $exe; PassThru = $true; ErrorAction = 'Stop' }
+    if ($arg) { $p.ArgumentList = $arg }
+    if ($Yonetici) { $p.Verb = 'RunAs' }
+    if ($Gizli) { $p.WindowStyle = 'Hidden' }
+    try { $s = Start-Process @p; $null = $s.Handle } catch { return $null }
+    while (-not $s.HasExited) { Bekle 0.3 }
+    return [int]$s.ExitCode
+}
+# Çalışan bir Python'un yolu ('' = yok). PATH'tekilere ve bilinen kurulum klasörlerine bakar; Windows'un Mağaza'ya
+# yönlendiren sahte python.exe'si çalışmadığı için elenir (her aday "import sys" ile denenir).
+function Python-Bul([switch]$Yenile) {
+    if ($Yenile) { $script:PythonYolu = $null; $script:PythonParca = $null }
+    if ($null -ne $script:PythonYolu) { return $script:PythonYolu }
+    $script:PythonYolu = ''
+    $adaylar = New-Object Collections.ArrayList
+    foreach ($a in 'py', 'python', 'python3') {
+        $c = Get-Command $a -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($c) { [void]$adaylar.Add([string]$c.Source) }
+    }
+    foreach ($k in @((Join-Path $env:LOCALAPPDATA 'Programs\Python'), $env:ProgramFiles)) {
+        foreach ($d in @(Get-ChildItem -LiteralPath $k -Directory -Filter 'Python3*' -ErrorAction SilentlyContinue | Sort-Object Name -Descending)) {
+            $y = Join-Path $d.FullName 'python.exe'
+            if (Test-Path -LiteralPath $y) { [void]$adaylar.Add($y) }
+        }
+    }
+    foreach ($y in $adaylar) { if ((Surec-Kod $y '-c "import sys"') -eq 0) { $script:PythonYolu = [string]$y; break } }
+    return $script:PythonYolu
+}
+function Python-Parca-Var([switch]$Yenile) {
+    if ($Yenile) { $script:PythonParca = $null }
+    if ($null -ne $script:PythonParca) { return $script:PythonParca }
+    $py = Python-Bul
+    $script:PythonParca = [bool]($py -and ((Surec-Kod $py '-c "import zstandard, xxhash"') -eq 0))
+    return $script:PythonParca
+}
+# Bir dosyayı indirir (beklerken arayüz donmaz); olmazsa $false
+function Dosya-Indir([string]$url, [string]$yol) {
+    [void](New-Item -ItemType Directory -Force (Split-Path -Parent $yol))
+    $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'RiotPlus')
+    $g = $wc.DownloadFileTaskAsync($url, $yol)
+    while (-not $g.IsCompleted) { Bekle 0.3 }
+    return (-not $g.IsFaulted -and (Test-Path -LiteralPath $yol) -and (Get-Item -LiteralPath $yol).Length -gt 0)
+}
+# Python'u (yoksa) ve iki parçasını kurar. Python yalnız bu kullanıcıya kurulur, yönetici izni istemez.
+function Python-Kur {
+    if ($Deneme) { Yaz 'deneme: Python kurulmadı' $RenkSoluk; return }
+    $py = Python-Bul -Yenile
+    if (-not $py) {
+        $yol = Join-Path $env:TEMP 'riotplus-python\python-kur.exe'
+        Yaz (T 'Python iniyor (27 MB)...' 'Downloading Python (27 MB)...') $RenkSoluk
+        if (-not (Dosya-Indir $PythonKurUrl $yol)) { Yaz (T 'Python indirilemedi; internet var mı?' "Couldn't download Python; are you online?") $RenkKirmizi; return }
+        $imza = Get-AuthenticodeSignature -LiteralPath $yol
+        if ($imza.Status -ne 'Valid' -or -not "$($imza.SignerCertificate.Subject)".StartsWith($PythonImzaci)) { Remove-Item -LiteralPath $yol -Force -ErrorAction SilentlyContinue; Yaz (T 'Python kurulum dosyasının imzası beklenen gibi değil, kurmadım.' "The Python installer's signature isn't the expected one; not installing.") $RenkKirmizi; return }
+        Yaz (T 'Python kuruluyor (yalnız senin kullanıcına; bir dakika sürebilir)...' 'Installing Python (for your user only; can take a minute)...') $RenkSoluk
+        $k = Surec-Calis $yol '/passive InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_test=0 Include_doc=0'
+        if ($k -ne 0 -and $k -ne 3010) { Yaz ((T 'Python kurulumu tamamlanmadı, kod ' "Python setup didn't finish, code ") + "$k") $RenkTuruncu; Kurulum-Yenile; return }
+        $py = Python-Bul -Yenile
+        if (-not $py) { Yaz (T "Python kuruldu ama bulamadım; Riot Plus'ı kapatıp yeniden aç." "Python was installed but I can't find it; close and reopen Riot Plus.") $RenkTuruncu; Kurulum-Yenile; return }
+        Yaz (T 'Python kuruldu.' 'Python installed.') $RenkSoluk
+    }
+    if (-not (Python-Parca-Var -Yenile)) {
+        Yaz (T 'Python parçaları kuruluyor (zstandard, xxhash)...' 'Installing Python packages (zstandard, xxhash)...') $RenkSoluk
+        $k = Surec-Calis $py '-m pip install --user --disable-pip-version-check zstandard xxhash' -Gizli
+        if ($k -ne 0 -or -not (Python-Parca-Var -Yenile)) { Yaz (T "Python parçaları kurulamadı; internet var mı? Elle: pip install zstandard xxhash" "Couldn't install the Python packages; are you online? By hand: pip install zstandard xxhash") $RenkTuruncu; Kurulum-Yenile; return }
+    }
+    Yaz (T "Python hazır: 'Rose'a aktar' artık modların Rose sürümünü üretebilir." "Python is ready: 'Copy to Rose' can now make the Rose versions of your mods.") $RenkYesil
+    Kurulum-Yenile
+}
+# Rose'un resmi sürümünü GitHub'dan indirir, özetini kontrol edip kurar (yönetici izni ister)
+function Rose-Kur {
+    if (Rose-Kurulu) { Yaz (T 'Rose zaten kurulu.' 'Rose is already installed.') $RenkSoluk; Kurulum-Yenile; return }
+    if (Oyun-Acik) { Yaz (T 'Maçtayken kurulmaz; maç bitince dene.' 'Not mid-game; try after.') $RenkTuruncu; return }
+    if ($Deneme) { Yaz 'deneme: Rose kurulmadı' $RenkSoluk; return }
+    Yaz (T "Rose'un son sürümünü soruyorum..." "Looking up Rose's latest release...") $RenkSoluk
+    $wc = New-Object Net.WebClient; $wc.Encoding = [Text.Encoding]::UTF8
+    $wc.Headers.Add('User-Agent', 'RiotPlus'); $wc.Headers.Add('Accept', 'application/vnd.github+json')
+    $g = $wc.DownloadStringTaskAsync($RoseSurumUrl)
+    while (-not $g.IsCompleted) { Bekle 0.3 }
+    $a = $null
+    if (-not $g.IsFaulted) { try { $r = $g.Result | ConvertFrom-Json; $a = @($r.assets) | Where-Object { "$($_.name)" -match '^Rose_Setup_.*\.exe$' } | Select-Object -First 1 } catch {} }
+    if (-not $a) { Yaz (T "Rose'un kurulum dosyasını bulamadım; indirme sayfasını açıyorum." "Couldn't find Rose's installer; opening the download page.") $RenkTuruncu; try { Start-Process $RoseIndirUrl } catch {}; return }
+    $yol = Join-Path $env:TEMP "riotplus-rose\$($a.name)"
+    Yaz (T "$($a.name) iniyor..." "Downloading $($a.name)...") $RenkSoluk
+    if (-not (Dosya-Indir "$($a.browser_download_url)" $yol)) { Yaz (T 'İndirme olmadı.' 'Download failed.') $RenkKirmizi; return }
+    $beklenen = ("$($a.digest)" -replace '^sha256:', '').ToLowerInvariant()
+    if ($beklenen -and (Get-FileHash -LiteralPath $yol -Algorithm SHA256).Hash.ToLowerInvariant() -ne $beklenen) { Remove-Item -LiteralPath $yol -Force -ErrorAction SilentlyContinue; Yaz (T "İnen dosyanın özeti GitHub'dakiyle tutmadı, kurmadım." "The download's hash didn't match GitHub's; not installing.") $RenkKirmizi; return }
+    Yaz (T 'Rose kuruluyor; Windows yönetici izni soracak.' 'Installing Rose; Windows will ask for admin rights.') $RenkSoluk
+    $k = Surec-Calis $yol '/SILENT /SUPPRESSMSGBOXES /NORESTART' -Yonetici
+    if ($null -eq $k) { Yaz (T 'Yönetici izni verilmedi, Rose kurulmadı.' 'No admin rights given; Rose was not installed.') $RenkTuruncu }
+    elseif (Rose-Kurulu) { Yaz (T "Rose $(Rose-Surum) kuruldu. Kullanmak için: LoL'ü aç > Rose ile aç." "Rose $(Rose-Surum) installed. To use it: Open LoL > Open with Rose.") $RenkYesil }
+    else { Yaz ((T 'Rose kurulumu tamamlanmadı, kod ' "Rose setup didn't finish, code ") + "$k") $RenkTuruncu }
+    Rose-Durum-Oku
+    Kurulum-Yenile
+}
+# Eksik olanları sırayla kurar: LTK Manager, Rose, Python
+function Hepsini-Kur {
+    if (-not (Ltk-Kurulu)) {
+        if (-not $script:LtkSon) { Yaz (T "LTK'nın son sürümünü soruyorum..." "Looking up LTK's latest release...") $RenkSoluk; try { Ltk-Surum-Sor } catch {}; $son = [DateTime]::Now.AddSeconds(12); while ([DateTime]::Now -lt $son -and -not $script:LtkSon) { Bekle 0.4; try { Ltk-Surum-Tick } catch {} } }
+        Ltk-Kur
+    }
+    if (-not (Rose-Kurulu)) { Rose-Kur }
+    if (-not (Python-Bul) -or -not (Python-Parca-Var)) { Python-Kur }
+    Kurulum-Yenile
+}
 function Rose-Surumu-Uret($kaynak, $hedef) {
     $betik = Join-Path $PSScriptRoot 'rose_surumu.py'
     if (-not (Test-Path -LiteralPath $betik)) { return 'rose_surumu.py yok' }
-    if ($null -eq $script:PythonYolu) {
-        $script:PythonYolu = ''
-        foreach ($a in 'py', 'python', 'python3') {
-            $c = Get-Command $a -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($c) { $script:PythonYolu = [string]$c.Source; break }
-        }
-    }
+    [void](Python-Bul)
     if (-not $script:PythonYolu) { return (T 'Python kurulu değil' 'Python is not installed') }
     $gec = "$hedef.yeni"; $hataDosya = [IO.Path]::GetTempFileName(); $ciktiDosya = [IO.Path]::GetTempFileName()
     try {
@@ -3001,6 +3119,21 @@ $PencereXaml = @'
           </DockPanel>
         </Border>
 
+        <!-- Kurulum sayfası: custom skinler için gerekenlerin durumu (LTK Manager, Rose, Python) ve kurma düğmeleri -->
+        <Border x:Name="KurulumGorunum" Visibility="Hidden" Background="#141A22" Height="{Binding ActualHeight, ElementName=AnaSayfa}">
+          <DockPanel Margin="16,14,16,10">
+            <TextBlock x:Name="KurulumAciklama" DockPanel.Dock="Top" FontSize="12.5" Foreground="#8C95A1" TextWrapping="Wrap" Margin="2,0,2,10"/>
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+              <Button x:Name="KurulumHepsi" Style="{StaticResource Birincil}" HorizontalAlignment="Left"/>
+              <TextBlock x:Name="KurulumNot" FontSize="11.5" Foreground="#8C95A1" TextWrapping="Wrap" Margin="2,8,2,0"/>
+            </StackPanel>
+            <ScrollViewer x:Name="KurulumKaydir" VerticalScrollBarVisibility="Auto" Focusable="False" Margin="-8,0,-8,0">
+              <ScrollViewer.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource InceKaydirma}"/></ScrollViewer.Resources>
+              <StackPanel x:Name="KurulumListe" Margin="8,0"/>
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+
         </Grid>
 
         <!-- Son mesaj -->
@@ -3049,7 +3182,8 @@ foreach ($ad in 'Kok', 'Kahraman', 'KahramanResim', 'KahramanKarart', 'KahramanA
                  'CustomAd', 'CustomNot', 'AnahtarCustom', 'CustomGorunum', 'CustomKaydir', 'CustomListe',
                  'ModEkle', 'LtkAc', 'LtkGuncelle', 'CustomBilgi', 'AnaSayfa', 'SampiyonKaydir', 'SampiyonSerit', 'GorselDugme',
                  'GuncelleSerit', 'GuncelleYazi', 'GuncelleBaglanti', 'SekmeHap', 'BaslikCam', 'DilTRKutu', 'DilENKutu', 'GorselCam', 'RakipYazi', 'RakipNot', 'AnahtarRakip', 'LtkKapatYazi', 'LtkKapatNot', 'AnahtarLtkKapat',
-                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt', 'RoseAktar', 'RoseModBaslik', 'RoseAktarBag', 'RoseKlasorBag', 'HesapYazi', 'MacAd', 'MacNot', 'AnahtarPoro') {
+                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt', 'RoseAktar', 'RoseModBaslik', 'RoseAktarBag', 'RoseKlasorBag', 'HesapYazi', 'MacAd', 'MacNot', 'AnahtarPoro',
+                 'KurulumGorunum', 'KurulumAciklama', 'KurulumHepsi', 'KurulumNot', 'KurulumKaydir', 'KurulumListe') {
     Set-Variable -Name $ad -Value (Bul $ad) -Scope Script
 }
 $Pencere.Title = $Baslik
@@ -3262,6 +3396,7 @@ function Sekme-Sec($ad) {
     $AnaSayfa.Visibility = if ($ad -eq 'ana') { 'Visible' } else { 'Hidden' }
     $Duzenleyici.Visibility = if ($ad -eq 'roller') { 'Visible' } else { 'Hidden' }
     $CustomGorunum.Visibility = if ($ad -eq 'custom') { 'Visible' } else { 'Hidden' }
+    $KurulumGorunum.Visibility = if ($ad -eq 'kurulum') { 'Visible' } else { 'Hidden' }
     Sekme-Boya
     if ($ad -eq 'roller') {
         # Kutular genişliği belli olmadan doldurulunca yazı sona kaymış kalıyor; başa alınır
@@ -3269,12 +3404,14 @@ function Sekme-Sec($ad) {
         foreach ($c in $script:Seciciler) { $c.CaretIndex = 0; $c.ScrollToHorizontalOffset(0) }
     }
     if ($ad -eq 'custom') { try { Ltk-Oku } catch {}; Custom-Liste-Olustur; $CustomKaydir.ScrollToTop() }
+    if ($ad -eq 'kurulum') { try { Kurulum-Olustur } catch {}; $KurulumKaydir.ScrollToTop() }
     $script:KahramanKod = $null
     Gorunum-Guncelle
 }
 Sekme-Olustur 'ana' 'Ana sayfa' 'Home'
 Sekme-Olustur 'roller' 'Şampiyonlar' 'Champions'
 Sekme-Olustur 'custom' 'Custom skinler' 'Custom skins'
+Sekme-Olustur 'kurulum' 'Kurulum' 'Setup'
 Sekme-Boya
 
 # ---- Seçim menüsü (sıra ve rol yazılarına tıklayınca) ----
@@ -4280,12 +4417,79 @@ function Custom-Liste-Olustur {
     Kahraman-Guncelle
 }
 
+# ---- Kurulum sayfası ----
+# Custom skinler için gerekenlerin durumu. Her öğe: @{ Ad; Tamam; Durum; Dugme; Islem }
+function Kurulum-Ogeleri {
+    $o = New-Object Collections.ArrayList
+    $lol = Test-Path -LiteralPath (Join-Path $LolKlasoru 'LeagueClient.exe')
+    [void]$o.Add(@{ Ad = 'League of Legends'; Tamam = ($lol -or $Deneme); Gerekli = $true
+        Durum = $(if ($lol -or $Deneme) { T "Bulundu: $LolKlasoru" "Found: $LolKlasoru" } else { T "Bulamadım. Kuruluysa lol-duzelt.ps1'in başındaki `$LolKlasoru satırına yolunu yaz." "Not found. If it is installed, put its path in the `$LolKlasoru line at the top of lol-duzelt.ps1." }) })
+    $ltk = Ltk-Kurulu; $surum = Ltk-Surum; $son = $script:LtkSon
+    $yeni = [bool]($ltk -and $son -and $surum -and $son.Surum -gt $surum)
+    [void]$o.Add(@{ Ad = 'LTK Manager'; Tamam = $ltk; Gerekli = $true
+        Durum = $(if (-not $ltk) { T 'Kurulu değil. Custom skinler için gerekli (Rose da bunu kullanır).' 'Not installed. Needed for custom skins (Rose uses it too).' } elseif ($yeni) { T "Kurulu: $surum. Yeni sürüm var: $($son.Surum)." "Installed: $surum. New version: $($son.Surum)." } else { T "Kurulu: $surum." "Installed: $surum." })
+        Dugme = $(if (-not $ltk) { T 'Kur' 'Install' } elseif ($yeni) { T 'Güncelle' 'Update' }); Islem = 'ltkkur' })
+    $rose = Rose-Kurulu
+    [void]$o.Add(@{ Ad = 'Rose'; Tamam = $rose; Gerekli = $false
+        Durum = $(if ($rose) { (T 'Kurulu' 'Installed') + $(if ($s = Rose-Surum) { ": $s" }) + '.' } else { T 'Kurulu değil. İsteğe bağlı: oyunun kendi skinlerini açar.' "Not installed. Optional: unlocks the game's own skins." })
+        Dugme = $(if (-not $rose) { T 'Kur' 'Install' }); Islem = 'rosekur' })
+    $py = Python-Bul; $parca = if ($py) { Python-Parca-Var } else { $false }
+    [void]$o.Add(@{ Ad = 'Python'; Tamam = [bool]($py -and $parca); Gerekli = $false
+        Durum = $(if (-not $py) { T "Kurulu değil. İsteğe bağlı: modlarının efektleri Rose'da da gelsin diye (150 MB)." 'Not installed. Optional: so your mods keep their effects in Rose (150 MB).' } elseif (-not $parca) { T 'Kurulu, ama iki parçası eksik (zstandard, xxhash).' 'Installed, but two packages are missing (zstandard, xxhash).' } else { T 'Kurulu, parçaları tamam.' 'Installed, packages ready.' })
+        Dugme = $(if (-not $py) { T 'Kur' 'Install' } elseif (-not $parca) { T 'Tamamla' 'Finish' }); Islem = 'pykur' })
+    return ,$o
+}
+function Kurulum-Olustur {
+    $KurulumListe.Children.Clear()
+    $KurulumAciklama.Text = T "Riot Plus'ın custom skin tarafı için gerekenler. Yeşil olan hazır; eksik olanı yanındaki düğmeyle kurabilirsin." 'What the custom skin side of Riot Plus needs. Green is ready; install anything missing with its button.'
+    $ogeler = Kurulum-Ogeleri
+    $eksik = 0
+    foreach ($o in $ogeler) {
+        $kart = New-Object Windows.Controls.Border
+        $kart.Style = $Pencere.FindResource('Grup'); $kart.Margin = '0,0,0,8'
+        $g = New-Object Windows.Controls.Grid
+        $g.Margin = '14,10,12,11'
+        $c0 = New-Object Windows.Controls.ColumnDefinition
+        $c1 = New-Object Windows.Controls.ColumnDefinition; $c1.Width = [Windows.GridLength]::Auto
+        $g.ColumnDefinitions.Add($c0); $g.ColumnDefinitions.Add($c1)
+        $yazi = New-Object Windows.Controls.StackPanel
+        $yazi.VerticalAlignment = 'Center'; $yazi.Margin = '0,0,12,0'
+        $b = New-Object Windows.Controls.TextBlock
+        $b.FontWeight = 'SemiBold'
+        $nokta = New-Object Windows.Documents.Run(([string][char]0x25CF) + '  ')
+        $nokta.Foreground = Firca $(if ($o.Tamam) { $RenkYesil } elseif ($o.Gerekli) { $RenkTuruncu } else { '#56606C' })
+        $b.Inlines.Add($nokta); $b.Inlines.Add((New-Object Windows.Documents.Run($o.Ad)))
+        $a = New-Object Windows.Controls.TextBlock
+        $a.Text = $o.Durum; $a.FontSize = 11.5; $a.Foreground = Firca $RenkSoluk; $a.TextWrapping = 'Wrap'; $a.Margin = '0,2,0,0'
+        [void]$yazi.Children.Add($b); [void]$yazi.Children.Add($a)
+        [void]$g.Children.Add($yazi)
+        if ($o.Dugme) {
+            $d = New-Object Windows.Controls.Button
+            $d.Style = $Pencere.FindResource('Kucuk'); $d.Content = $o.Dugme; $d.Tag = $o.Islem; $d.VerticalAlignment = 'Center'
+            [Windows.Controls.Grid]::SetColumn($d, 1)
+            $d.Add_Click({ Kart-Bas "$($this.Tag)" })
+            [void]$g.Children.Add($d)
+            if (-not $o.Tamam) { $eksik++ }
+        }
+        $kart.Child = $g
+        [void]$KurulumListe.Children.Add($kart)
+    }
+    if ($eksik) {
+        $KurulumHepsi.Content = T 'Eksikleri kur' 'Install what is missing'; $KurulumHepsi.Visibility = 'Visible'
+        $KurulumNot.Text = T "Sırayla kurar: LTK Manager ve Rose için Windows yönetici izni sorar, Python sormaz. Hepsi resmi kaynağından iner (LTK ve Rose GitHub'dan, Python python.org'dan) ve kurmadan önce doğrulanır." "Installs them in order: Windows asks for admin rights for LTK Manager and Rose, not for Python. Everything comes from its official source (LTK and Rose from GitHub, Python from python.org) and is verified before installing."
+    } else {
+        $KurulumHepsi.Visibility = 'Collapsed'
+        $KurulumNot.Text = T 'Her şey hazır.' 'Everything is ready.'
+    }
+}
+function Kurulum-Yenile { if ($KurulumGorunum -and $KurulumGorunum.Visibility -eq 'Visible') { try { Kurulum-Olustur } catch {} } }
 function Custom-Yenile {
     if ($script:Kapandi) { return }
     Rose-Durum-Oku
     try { Ltk-Oku } catch {}
     Custom-Satir-Guncelle
     if ($CustomGorunum.Visibility -eq 'Visible') { Custom-Liste-Olustur }
+    Kurulum-Yenile
 }
 
 function Custom-Gorunum-Ac([string]$odak) {
@@ -4423,6 +4627,7 @@ $RoseDugme.Add_Click({
     }
 })
 $LtkGuncelle.Add_MouseLeftButtonUp({ if (Basildi $this) { Kart-Bas 'ltkkur' } })
+$KurulumHepsi.Add_Click({ Kart-Bas 'hepsikur' })
 $GuncelleSerit.Add_MouseLeftButtonUp({ if (Basildi $this) { Kart-Bas 'ltkkur' } })
 
 # ---- Tepsi ----
@@ -4620,7 +4825,7 @@ $Pencere.Add_PreviewKeyDown({
         return
     }
     if ($esc) { if ($script:Sekme -ne 'ana') { Sekme-Sec 'ana' } else { $Pencere.WindowState = 'Minimized' }; return }
-    if ($Duzenleyici.Visibility -eq 'Visible' -or $CustomGorunum.Visibility -eq 'Visible') { return }
+    if ($Duzenleyici.Visibility -eq 'Visible' -or $CustomGorunum.Visibility -eq 'Visible' -or $KurulumGorunum.Visibility -eq 'Visible') { return }
     if ($n -eq 4) { Kart-Bas $script:EylemIslem }
     elseif ($Sorunlar[$n].Islem -eq 'ac' -and (Ac-Sorulur)) { Ac-Menu $Sorunlar[$n].Satir }
     else { Kart-Bas $Sorunlar[$n].Islem }
@@ -4658,6 +4863,7 @@ function Acilis {
     Gorunum-Guncelle
     if (-not $script:SampiyonTr.Count) { Yaz (T 'Şampiyon listesini indiremedim; internet gelince pencereyi yeniden aç.' "Couldn't download the champion list; reopen once you're online.") $RenkTuruncu }
     else { Yaz (T 'Hazırım.' 'Ready.') $RenkSoluk }
+    if (-not $Deneme -and -not (Ltk-Kurulu)) { Yaz (T "Custom skinler için LTK Manager gerekli; 'Kurulum' sekmesinden tek tıkla kurabilirsin." "Custom skins need LTK Manager; install it with one click from the 'Setup' tab.") $RenkSoluk }
     if ($Islem -eq 'sira') { $script:BekleyenIslem = 'sira' }
     # Custom açıksa LTK tepside değilse açılır; LTK'nın yeni sürümü arka planda sorulur
     elseif ($Ayar.custom -and -not $Deneme -and (Ltk-Kurulu)) { $script:BekleyenIslem = 'customhazir' }
