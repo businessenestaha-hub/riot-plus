@@ -1433,6 +1433,18 @@ function Rose-Girdileri {
         $j = Json-Oku (Join-Path $RoseVeri 'injection\ltf_installed.json')
         foreach ($ad in 'installed', 'kept') { if ($j[$ad]) { foreach ($id in @($j[$ad].Keys)) { $k["$id"] = $true } } }
     } catch {}
+    # Rose'un kendi mod panelinden eklenen kategori modları (VFX, harita, yazı tipi...): Rose bunları LTK kütüphanesine
+    # kendi kopyası olarak koyar (mods\<kategori>\rose_category_mods.json, mods.<ad>.ltkId) ve maçta kendisi açıp kapatır
+    try {
+        foreach ($d in @(Get-ChildItem -LiteralPath (Join-Path $RoseVeri 'mods') -Directory -ErrorAction SilentlyContinue)) {
+            $y = Join-Path $d.FullName 'rose_category_mods.json'
+            if (-not (Test-Path -LiteralPath $y)) { continue }
+            try {
+                $mj = Json-Oku $y
+                if ($mj['mods'] -is [Collections.IDictionary]) { foreach ($g in @($mj['mods'].Values)) { if (($g -is [Collections.IDictionary]) -and "$($g['ltkId'])") { $k["$($g['ltkId'])"] = $true } } }
+            } catch {}
+        }
+    } catch {}
     return $k
 }
 # Rose kipinde custom'ı açar: Riot Plus'ın açtığı LTK kapatılır (Rose açık LTK görürse o maçta skin yüklemeyi atlar), Rose başlatılır
@@ -1611,10 +1623,10 @@ function Rose-Aktar {
     $notlar = @()
     if ($vardi) { $notlar += T "$vardi mod zaten aktarılmıştı" "$vardi already copied" }
     if ($paket.Count) { $notlar += T "$($paket.Count) mod .modpkg biçiminde, onu Rose'un kendi menüsünden ekle ($($paket -join ', '))" "$($paket.Count) are .modpkg, add those from Rose's own menu ($($paket -join ', '))" }
-    if ($sampiyonsuz) { $notlar += T "$sampiyonsuz mod şampiyona bağlı değil, atlandı" "$sampiyonsuz aren't tied to a champion, skipped" }
+    if ($sampiyonsuz) { $notlar += T "$sampiyonsuz mod şampiyona bağlı değil (VFX, harita gibi): onu Rose'un LoL içindeki mod panelinden ekle" "$sampiyonsuz aren't tied to a champion (VFX, map...): add those from Rose's mod panel inside LoL" }
     if ($notlar.Count) { Yaz (($notlar -join '; ') + '.') $RenkSoluk }
     if ($hata.Count) { Yaz ((T 'Aktarılamadı: ' "Couldn't copy: ") + ($hata -join '; ')) $RenkTuruncu }
-    if ($eklendi.Count) { Yaz (T "Rose'da: şampiyon seçiminde modun yazdığı skinin üstüne gel, custom menüsünden seç." "In Rose: hover the skin the mod targets in champ select and pick it from the custom menu.") $RenkSoluk }
+    if ($eklendi.Count) { Yaz (T "Rose'da: şampiyon seçiminde modun yazdığı skinin üstüne gel, custom menüsünden seç. O skin sende yoksa modun dokuları gelir ama skin ayarına yazdıkları (ulti, animasyon) gelmez; tam hali için LTK ile aç." "In Rose: hover the skin the mod targets in champ select and pick it from the custom menu. If you don't own that skin, the mod's textures show but its skin-data changes (ult, animations) don't; open with LTK for the full mod.") $RenkSoluk }
 }
 
 function Rose-Durum-Oku { $script:RoseDurum = @{ Kurulu = (Rose-Kurulu); Acik = (Rose-Acik) } }
@@ -4053,7 +4065,7 @@ $CustomGorunum.Add_Drop({
 })
 $LtkAc.Add_Click({ if (Ltk-Kurulu) { Start-Process -FilePath $LtkExe } })
 Cevir $RoseAktar "Rose'a aktar" 'Copy to Rose'
-Ipucu-Ver $RoseAktar "Buradaki modları Rose'un custom skin klasörüne kopyalar; Rose'la girdiğinde de seçebilirsin. Daha önce aktarılan yeniden kopyalanmaz." "Copies these mods into Rose's custom skin folder so you can pick them when playing with Rose too. Already copied ones are skipped."
+Ipucu-Ver $RoseAktar "Buradaki modları Rose'un custom skin klasörüne kopyalar; Rose'la girdiğinde de seçebilirsin. Daha önce aktarılan yeniden kopyalanmaz. Sende olmayan bir skine yazan modun Rose'da yalnız dokuları gelir (ulti, animasyon gelmez)." "Copies these mods into Rose's custom skin folder so you can pick them when playing with Rose too. Already copied ones are skipped."
 $RoseAktar.Add_Click({ Kart-Bas 'roseaktar' })
 # Kaynak seçici: iş zamanlayıcı kuyruğunda çalışır (Rose'u durdurmak / LTK'yı açmak beklemeli işler)
 foreach ($k in $KaynakLtk, $KaynakRose) {
