@@ -15,6 +15,8 @@
 #   "LoL'ü aç" (LoL kapalıyken) sorar: LTK Manager ile / Rose ile / düz. Düz ve LTK açılışında Rose kapatılır, client'taki
 #   eklenti kancası kaldırılır; kalkmazsa LoL açılmaz. Riot Plus açılırken Rose kendiliğinden başlatılmaz.
 #   Custom skinler > "Rose'a aktar": LTK'daki .fantome modları Rose'un custom skin klasörüne kopyalar.
+#   11 Kas: belirli bir skine yazan modlar için "Rose sürümü" (rose_surumu.py, Python ister; hazırları rose-surumleri\ klasöründen de alınır):
+#   moda Rose'un biçiminde bir klasik skin dosyası eklenir, böylece ulti / imza / VFX Rose'da da gelir. Klasik skinin üstünde seçilir.
 # Arayüz Türkçe / İngilizce: başlıktaki TR / EN (ayarlar.json "dil").
 #  Sorun mu var?  1 Ekrana gelmiyor   : yalnız client arayüzünü yeniden başlatır (giriş ve parti korunur)
 #                 2 Yüklemede kaldı   : maç başladı mı bakar; oyun penceresini tazeler ya da yeniden bağlar
@@ -1529,6 +1531,34 @@ function Rose-Dosya-Adi([string]$ad) {
     if ($t.Length -gt 80) { $t = $t.Substring(0, 80).Trim() }
     return $t
 }
+# Belirli bir skine yazan modun "Rose sürümü" (rose_surumu.py; ayrıntı o dosyanın başında): moda Rose'un biçiminde bir
+# klasik skin dosyası eklenir, böylece modun efekt tablosu Rose'da da kullanılır (ulti, imza, karanlık VFX gelir).
+# Üretim Python ister (WAD içindeki dosya zstd ile sıkıştırılmış; PowerShell 5.1 açamaz). Python yoksa hazır sürümler
+# rose-surumleri\<mod slug'ı>.fantome olarak elle de konabilir. Dönüş: 'tamam' | 'gereksiz' | neden olmadığı.
+$RoseSurumKlasoru = Join-Path $PSScriptRoot 'rose-surumleri'
+$script:PythonYolu = $null
+function Rose-Surumu-Uret($kaynak, $hedef) {
+    $betik = Join-Path $PSScriptRoot 'rose_surumu.py'
+    if (-not (Test-Path -LiteralPath $betik)) { return 'rose_surumu.py yok' }
+    if ($null -eq $script:PythonYolu) {
+        $script:PythonYolu = ''
+        foreach ($a in 'py', 'python', 'python3') {
+            $c = Get-Command $a -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($c) { $script:PythonYolu = [string]$c.Source; break }
+        }
+    }
+    if (-not $script:PythonYolu) { return (T 'Python kurulu değil' 'Python is not installed') }
+    $gec = "$hedef.yeni"; $hataDosya = [IO.Path]::GetTempFileName(); $ciktiDosya = [IO.Path]::GetTempFileName()
+    try {
+        [void](New-Item -ItemType Directory -Force (Split-Path -Parent $hedef))
+        $p = Start-Process -FilePath $script:PythonYolu -ArgumentList ('"{0}" "{1}" "{2}"' -f $betik, $kaynak, $gec) -WindowStyle Hidden -Wait -PassThru -RedirectStandardError $hataDosya -RedirectStandardOutput $ciktiDosya -ErrorAction Stop
+        if ($p.ExitCode -eq 0 -and (Test-Path -LiteralPath $gec)) { Move-Item -LiteralPath $gec -Destination $hedef -Force; return 'tamam' }
+        if ($p.ExitCode -eq 3) { return 'gereksiz' }
+        $h = ''; try { $h = [string](@(([IO.File]::ReadAllText($hataDosya)).Trim() -split "`r?`n") | Select-Object -Last 1) } catch {}
+        if ($h) { return $h } else { return "python kod $($p.ExitCode)" }
+    } catch { return "$($_.Exception.Message)" }
+    finally { foreach ($y in $gec, $hataDosya, $ciktiDosya) { Remove-Item -LiteralPath $y -Force -ErrorAction SilentlyContinue } }
+}
 function Rose-Aktar {
     if (-not (Rose-Kurulu)) { Yaz (T 'Rose kurulu değil.' 'Rose is not installed.') $RenkTuruncu; return }
     if (Rose-Mesgul-Faz) { Yaz (T 'Seçimde ya da maçtayken aktarılmaz; maç bitince dene.' 'Not during champ select or a game; try after.') $RenkTuruncu; return }
@@ -1536,7 +1566,7 @@ function Rose-Aktar {
     if (-not $script:LtkKutuphane -or -not $script:LtkKutuphane.Modlar.Count) { Yaz (T "LTK'da aktarılacak mod yok." 'No mods in LTK to copy.') $RenkSoluk; return }
     if ($Deneme) { Yaz "deneme: $($script:LtkKutuphane.Modlar.Count) mod Rose'a aktarılmadı" $RenkSoluk; return }
     $kok = Join-Path $RoseVeri 'mods\skins'; $ltkMod = Join-Path $LtkVeri 'mods'
-    $eklendi = @(); $vardi = 0; $paket = @(); $sampiyonsuz = 0; $hata = @()
+    $eklendi = @(); $vardi = 0; $paket = @(); $sampiyonsuz = 0; $hata = @(); $sinirli = @(); $uretimNot = ''
     foreach ($m in @($script:LtkKutuphane.Modlar)) {
         if ($m.Engelli) { continue }
         if (-not $m.Ana) { $sampiyonsuz++; continue }
@@ -1545,6 +1575,22 @@ function Rose-Aktar {
         $gecici = $null
         try {
             if (-not (Test-Path -LiteralPath $kaynak)) { throw 'dosya yok' }
+            # Klasik skine yazmayan mod: Rose sürümü varsa (ya da üretilebiliyorsa) o aktarılır ve klasik skini hedefler.
+            # Hazır sürüm modun LTK'daki dosyasından eskiyse (mod sonradan güncellendi) kullanılmaz.
+            $bicim = 'ayni'; $kaynakDosya = $kaynak
+            $klasikYazar = (@($m.Skinler) -contains 0)   # not: tek öğeli @(0) dizisi koşulda yanlış sayılır; -contains ile bakılır
+            if (-not $klasikYazar) {
+                $hazir = Join-Path $RoseSurumKlasoru "$($m.Slug).fantome"
+                # Elle konan hazır sürüm "<slug>-rose.fantome" adıyla da olabilir; daha yeniyse o kullanılır
+                $elle = Join-Path $RoseSurumKlasoru "$($m.Slug)-rose.fantome"
+                if ((Test-Path -LiteralPath $elle) -and (-not (Test-Path -LiteralPath $hazir) -or (Get-Item -LiteralPath $elle).LastWriteTimeUtc -gt (Get-Item -LiteralPath $hazir).LastWriteTimeUtc)) { $hazir = $elle }
+                $guncel = (Test-Path -LiteralPath $hazir) -and ((Get-Item -LiteralPath $hazir).LastWriteTimeUtc -ge (Get-Item -LiteralPath $kaynak).LastWriteTimeUtc)
+                if (-not $guncel) {
+                    $u = Rose-Surumu-Uret $kaynak $hazir
+                    if ($u -eq 'tamam') { $guncel = $true } elseif ($u -eq 'gereksiz') { $klasikYazar = $true } else { $uretimNot = [string]$u }
+                }
+                if ($guncel) { $kaynakDosya = $hazir; $bicim = 'klasik' } elseif (-not $klasikYazar) { $sinirli += [string]$m.Ad }
+            }
             $klasor = Join-Path $kok "$([int]$m.Ana * 1000)"
             [void](New-Item -ItemType Directory -Force $klasor)
             $manYol = Join-Path $klasor 'rose_mod_targets.json'
@@ -1561,7 +1607,16 @@ function Rose-Aktar {
                 $g = $modlar[$k]
                 if (($g -is [Collections.IDictionary]) -and "$($g['riotPlusLtkId'])" -eq $m.Id) {
                     $gAd = if ("$($g['name'])") { "$($g['name'])" } else { "$k" }
-                    if (Test-Path -LiteralPath (Join-Path $klasor "$gAd.fantome")) { $var = $true } else { [void]$modlar.Remove($k) }
+                    $gDosya = Join-Path $klasor "$gAd.fantome"
+                    $gBicim = if ("$($g['riotPlusBicim'])") { "$($g['riotPlusBicim'])" } else { 'ayni' }
+                    $gKaynak = "$($g['riotPlusKaynak'])"
+                    if ((Test-Path -LiteralPath $gDosya) -and $gBicim -eq $bicim -and (-not $gKaynak -or $gKaynak -eq "$($m.Sha)")) { $var = $true }
+                    else {
+                        # Eski aktarma (öteki biçimde ya da modun önceki hali): dosyası ve kaydı kaldırılır, yenisi konur
+                        Remove-Item -LiteralPath $gDosya -Force -ErrorAction SilentlyContinue
+                        Remove-Item -LiteralPath (Join-Path $klasor "$gAd.png") -Force -ErrorAction SilentlyContinue
+                        [void]$modlar.Remove($k)
+                    }
                 }
             }
             if ($var) { $vardi++; continue }
@@ -1578,7 +1633,7 @@ function Rose-Aktar {
             while ($kayitli[$ad.ToLowerInvariant()] -or (Test-Path -LiteralPath (Join-Path $klasor "$ad.fantome"))) { $ad = "$taban ($n)"; $n++ }
             $hedef = Join-Path $klasor "$ad.fantome"
             $gecici = Join-Path $klasor ".riotplus-$([Guid]::NewGuid().ToString('N')).tmp"   # noktayla başlayanı Rose mod saymaz
-            Copy-Item -LiteralPath $kaynak -Destination $gecici -Force
+            Copy-Item -LiteralPath $kaynakDosya -Destination $gecici -Force
             # Rose, META/info.json'ı olan arşivi olduğu gibi alır; yoksa eklenir
             $z = [IO.Compression.ZipFile]::Open($gecici, [IO.Compression.ZipArchiveMode]::Update)
             try {
@@ -1595,8 +1650,8 @@ function Rose-Aktar {
             # Değerler boru hattından geçirilmez: oradan çıkan değer PSObject sarmalı taşır ve JavaScriptSerializer sarmalı
             # seri hale getirmeye çalışıp "döngüsel başvuru" hatası verir (10 Kas: ilk sürümde aktarma bu yüzden olmadı).
             $hedefler = [Collections.Generic.List[int]]::new()
-            foreach ($num in @($m.Skinler)) { if ($null -ne $num) { $hedefler.Add([int]$m.Ana * 1000 + [int]$num) } }
-            if (-not $hedefler.Count) { $hedefler.Add([int]$m.Ana * 1000) }
+            if ($bicim -ne 'klasik') { foreach ($num in @($m.Skinler)) { if ($null -ne $num) { $hedefler.Add([int]$m.Ana * 1000 + [int]$num) } } }
+            if (-not $hedefler.Count) { $hedefler.Add([int]$m.Ana * 1000) }   # Rose sürümü: klasik skinin üstünde seçilir
             $girdi = [Collections.Generic.Dictionary[string,object]]::new()
             $girdi['name'] = [string]$ad
             $girdi['displayName'] = [string]$m.Ad
@@ -1604,6 +1659,8 @@ function Rose-Aktar {
             $girdi['updatedAt'] = [double][Math]::Round(([DateTime]::UtcNow - [DateTime]'1970-01-01').TotalSeconds, 3)
             $girdi['sourceHash'] = $ozet
             $girdi['riotPlusLtkId'] = [string]$m.Id
+            $girdi['riotPlusBicim'] = [string]$bicim
+            $girdi['riotPlusKaynak'] = [string]$m.Sha
             $modlar[[string]$ad] = $girdi
             $man['version'] = [int]1
             if (-not $man.ContainsKey('championId')) { $man['championId'] = [int]$m.Ana }
@@ -1612,7 +1669,7 @@ function Rose-Aktar {
             Json-Yaz $manYol $man
             Move-Item -LiteralPath $gecici -Destination $hedef -Force; $gecici = $null
             try { [void][ModWad]::GorselCikar($kaynak, (Join-Path $klasor "$ad.png")) } catch {}   # Rose'un menüsündeki önizleme
-            $eklendi += "$($m.Ad) ($(Sampiyon-Adi $m.Ana))"
+            $eklendi += "$($m.Ad) ($(Sampiyon-Adi $m.Ana))$(if ($bicim -eq 'klasik') { T ' [Rose sürümü]' ' [Rose version]' })"
         } catch {
             $hata += "$($m.Ad): $($_.Exception.Message)"
             if ($gecici) { Remove-Item -LiteralPath $gecici -Force -ErrorAction SilentlyContinue }
@@ -1626,7 +1683,8 @@ function Rose-Aktar {
     if ($sampiyonsuz) { $notlar += T "$sampiyonsuz mod şampiyona bağlı değil (VFX, harita gibi): onu Rose'un LoL içindeki mod panelinden ekle" "$sampiyonsuz aren't tied to a champion (VFX, map...): add those from Rose's mod panel inside LoL" }
     if ($notlar.Count) { Yaz (($notlar -join '; ') + '.') $RenkSoluk }
     if ($hata.Count) { Yaz ((T 'Aktarılamadı: ' "Couldn't copy: ") + ($hata -join '; ')) $RenkTuruncu }
-    if ($eklendi.Count) { Yaz (T "Rose'da: şampiyon seçiminde modun yazdığı skinin üstüne gel, custom menüsünden seç. O skin sende yoksa modun dokuları gelir ama skin ayarına yazdıkları (ulti, animasyon) gelmez; tam hali için LTK ile aç." "In Rose: hover the skin the mod targets in champ select and pick it from the custom menu. If you don't own that skin, the mod's textures show but its skin-data changes (ult, animations) don't; open with LTK for the full mod.") $RenkSoluk }
+    if ($sinirli.Count) { Yaz ((T "$($sinirli.Count) mod belirli bir skine yazıyor ve Rose sürümü üretilemedi ($uretimNot): Rose'da dokuları gelir, efektleri (ulti, imza, VFX) gelmez. Python ile 'pip install zstandard xxhash' kuruluysa kendiliğinden üretilir; ya da hazır Rose sürümünü rose-surumleri klasörüne koyup yeniden bas. " "$($sinirli.Count) mod(s) target a specific skin and no Rose version could be made ($uretimNot): textures show in Rose, effects don't. With Python and 'pip install zstandard xxhash' it is made automatically; or put a ready Rose version into the rose-surumleri folder and press again. ") + ($sinirli -join ', ')) $RenkTuruncu }
+    if ($eklendi.Count) { Yaz (T "Rose'da: [Rose sürümü] yazanları ve klasik skin modlarını şampiyonun KLASİK skininin üstüne gelip custom menüsünden seç; ötekileri modun yazdığı skinin üstünde." "In Rose: pick the ones marked [Rose version] and base-skin mods on the champion's BASE skin from the custom menu; the others on the skin they target.") $RenkSoluk }
 }
 
 function Rose-Durum-Oku { $script:RoseDurum = @{ Kurulu = (Rose-Kurulu); Acik = (Rose-Acik) } }
@@ -4065,7 +4123,7 @@ $CustomGorunum.Add_Drop({
 })
 $LtkAc.Add_Click({ if (Ltk-Kurulu) { Start-Process -FilePath $LtkExe } })
 Cevir $RoseAktar "Rose'a aktar" 'Copy to Rose'
-Ipucu-Ver $RoseAktar "Buradaki modları Rose'un custom skin klasörüne kopyalar; Rose'la girdiğinde de seçebilirsin. Daha önce aktarılan yeniden kopyalanmaz. Sende olmayan bir skine yazan modun Rose'da yalnız dokuları gelir (ulti, animasyon gelmez)." "Copies these mods into Rose's custom skin folder so you can pick them when playing with Rose too. Already copied ones are skipped."
+Ipucu-Ver $RoseAktar "Buradaki modları Rose'un custom skin klasörüne kopyalar; Rose'la girdiğinde de seçebilirsin. Daha önce aktarılan yeniden kopyalanmaz. Belirli bir skine yazan modlar için Rose sürümü üretilir (klasik skinin üstünde seçilir; Python gerekir)." "Copies these mods into Rose's custom skin folder so you can pick them when playing with Rose too. Already copied ones are skipped."
 $RoseAktar.Add_Click({ Kart-Bas 'roseaktar' })
 # Kaynak seçici: iş zamanlayıcı kuyruğunda çalışır (Rose'u durdurmak / LTK'yı açmak beklemeli işler)
 foreach ($k in $KaynakLtk, $KaynakRose) {

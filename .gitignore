@@ -23,3 +23,5 @@ Thumbs.db
 
 # Large JSON caches (regeneratable)
 sampiyon-skinleri.json
+# Modların Rose sürümleri (rose_surumu.py üretir; oyun içeriği taşır, repoya girmez)
+rose-surumleri/
