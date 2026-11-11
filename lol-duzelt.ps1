@@ -23,6 +23,7 @@
 #  5 / ana düğme: Sıraya gir (lobi + roller + sıra), sıradayken Sıradan çık, seçimde/maçta LoL'e geç
 #  Şampiyon seçimi: maçı kabul et, ban at, rolüne göre pick at (rol listeleri "düzenle" görünümünde)
 #  Maç açıkken 1-5 ve Esc kısayolları kapalı. Esc pencereyi küçültür. Son mesajlar altta; ayrıntı gunluk.txt'de.
+# Açmak için: "Riot Plus.cmd" (çift tıkla). Masaüstü kısayolu + Ctrl+Alt+L için bir kez "Kisayol Olustur.cmd".
 # Parametreler: -Islem sira  açılınca ana düğmeye basar (araç zaten açıksa açık olana söyler)
 #               -Sessiz      yalnız deneme: pencere gösterilmez, odak çalınmaz, mesajlar konsola da yazılır
 #               -Kare x.png  -Sessiz ile: pencereyi göstermeden durumların resmini kaydeder
@@ -72,6 +73,29 @@ $RoseIndirUrl   = 'https://github.com/Alban1911/Rose/releases/latest'
 $RoseAcilisSn   = 25                 # Rose başlatıldıktan sonra sürecinin görünmesi için en fazla bekleme
 # -----------------
 
+# Başka bilgisayarda kurulum yolları farklı olabilir: yukarıdaki yol yoksa Riot'un kendi kayıtlarından bulunur
+# (yol varsa hiçbir şey değişmez). Riot Client: RiotClientInstalls.json; LoL: product_settings.yaml.
+if (-not (Test-Path -LiteralPath $RiotClient)) {
+    try {
+        $rj = [IO.File]::ReadAllText((Join-Path $env:ProgramData 'Riot Games\RiotClientInstalls.json')) | ConvertFrom-Json
+        foreach ($aday in @($rj.rc_live, $rj.rc_default)) {
+            if ($aday -and (Test-Path -LiteralPath "$aday")) { $RiotClient = "$aday".Replace('/', '\'); break }
+        }
+    } catch {}
+}
+if (-not (Test-Path -LiteralPath (Join-Path $LolKlasoru 'LeagueClient.exe'))) {
+    try {
+        $ys = [IO.File]::ReadAllText((Join-Path $env:ProgramData 'Riot Games\Metadata\league_of_legends.live\league_of_legends.live.product_settings.yaml'))
+        if ($ys -match '(?m)^\s*product_install_full_path:\s*"?([^"\r\n]+)"?') {
+            $aday = $Matches[1].Trim().Replace('\\', '\').Replace('/', '\')
+            if (Test-Path -LiteralPath (Join-Path $aday 'LeagueClient.exe')) { $LolKlasoru = $aday }
+        }
+    } catch {}
+}
+if (-not (Test-Path -LiteralPath $LtkExe)) {
+    $aday = Join-Path $env:LOCALAPPDATA 'LTK Manager\ltk-manager.exe'   # kullanıcıya özel kurulum
+    if (Test-Path -LiteralPath $aday) { $LtkExe = $aday }
+}
 $GameLogs = Join-Path $LolKlasoru 'Logs\GameLogs'
 $Deneme = [bool]$DenemeKlasoru
 if ($Deneme) { $LolKlasoru = $DenemeKlasoru }
