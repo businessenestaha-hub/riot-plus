@@ -936,10 +936,12 @@ function Sampiyon-Adi($id) {
 $script:Indirmeler = @{}     # yerel yol -> indirme görevi
 $script:GorselBellek = @{}   # tür|kod -> BitmapImage
 # 'skin' türünde kod "Talon_12" gibidir (o skinin splash'ı)
-function Gorsel-Yol($tur, $kod) { Join-Path $GorselKlasoru "$tur\$kod.$(if ($tur -eq 'ikon') { 'png' } else { 'jpg' })" }
+function Gorsel-Yol($tur, $kod) { Join-Path $GorselKlasoru "$tur\$kod.$(if ($tur -eq 'ikon' -or $tur -eq 'rol') { 'png' } else { 'jpg' })" }
 function Gorsel-Url($tur, $kod) {
     if ($tur -eq 'splash') { "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${kod}_0.jpg" }
     elseif ($tur -eq 'skin') { "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/$kod.jpg" }
+    # Rol ikonları (client'ın kendi ikonları): Data Dragon'da yok; client dosyalarının herkese açık kopyası CommunityDragon'dan
+    elseif ($tur -eq 'rol') { "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-$kod.png" }
     else { "https://ddragon.leagueoflegends.com/cdn/$($script:DdSurum)/img/champion/$kod.png" }
 }
 # Yerelde varsa dosyadan, yoksa internetten (WPF kendisi arka planda indirir) ve aynı anda önbelleğe indirilir
@@ -960,7 +962,7 @@ function Gorsel($tur, $kod) {
             } catch {}
         }
     }
-    $bi.DecodePixelWidth = if ($tur -eq 'ikon') { 80 } else { 880 }
+    $bi.DecodePixelWidth = if ($tur -eq 'ikon' -or $tur -eq 'rol') { 80 } else { 880 }
     $bi.EndInit()
     if (Test-Path $yol) { $script:GorselBellek[$anahtar] = $bi }
     return $bi
@@ -3319,8 +3321,10 @@ $SiraSecim.Add_MouseLeftButtonUp({
     if (-not (Basildi $this)) { return }
     Menu-Ac $SiraSecim @($SiraListesi | ForEach-Object { @{ Metin = (T $_.Tr $_.En); Deger = $_.Id; Secili = ($_.Id -eq [int]$Ayar.sira) } }) { param($d) $Ayar.sira = [int]$d; Ayar-Kaydet; Gorunum-Guncelle }
 })
-# Rol ikonları: kendi çizimimiz (20x20 kutuda yol verisi). Üst = sol üst köşe, Alt = sağ alt köşe, Orta = çapraz şerit,
-# Orman = ağaç, Destek = kalkan, Fark etmez = halka, '' (client'taki roller) = çizgi.
+# Rol ikonları: client'ın kendi ikonları, şampiyon görselleri gibi bir kez indirilip gorsel\rol\ klasöründe saklanır
+# (Gorsel 'rol' <top|jungle|middle|bottom|utility|fill>). İnene kadar, internet yokken ve '' (client'taki roller) için
+# aşağıdaki basit çizimler gösterilir (20x20 kutuda yol verisi): Üst = sol üst köşe, Alt = sağ alt köşe,
+# Orta = çapraz şerit, Orman = ağaç, Destek = kalkan, Fark etmez = halka, '' = çizgi.
 $RolSekil = @{
     'TOP'     = 'M2,2 H18 V6 H6 V18 H2 Z M12.5,12.5 H17.5 V17.5 H12.5 Z'
     'BOTTOM'  = 'M18,18 H2 V14 H14 V2 H18 Z M2.5,2.5 H7.5 V7.5 H2.5 Z'
@@ -3330,7 +3334,21 @@ $RolSekil = @{
     'FILL'    = 'M10,2 A8,8 0 1 0 10.01,2 Z M10,6.5 A3.5,3.5 0 1 1 9.99,6.5 Z'
     ''        = 'M3,8.5 H17 V11.5 H3 Z'
 }
-function Rol-Ikon([string]$kod, [double]$boy, [string]$renk) {
+function Rol-Resmi-Var([string]$kod) { [bool]$kod -and (Test-Path -LiteralPath (Gorsel-Yol 'rol' $kod.ToLowerInvariant())) }
+function Rol-Ikon([string]$kod, [double]$boy, [string]$renk, [double]$soluk = 1) {
+    if ($kod) {
+        $ad = $kod.ToLowerInvariant()
+        if (Rol-Resmi-Var $kod) {
+            $i = New-Object Windows.Controls.Image
+            $i.Source = Gorsel 'rol' $ad
+            $i.Width = $boy + 6; $i.Height = $boy + 6; $i.Stretch = 'Uniform'; $i.Opacity = $soluk
+            $i.HorizontalAlignment = 'Center'; $i.VerticalAlignment = 'Center'; $i.IsHitTestVisible = $false
+            [Windows.Media.RenderOptions]::SetBitmapScalingMode($i, 'HighQuality')
+            return $i
+        }
+        # Henüz inmemiş: indirmeyi başlat (bir kez), şimdilik çizim göster
+        if (-not $Sessiz -and -not $script:Indirmeler[(Gorsel-Yol 'rol' $ad)]) { try { [void](Gorsel 'rol' $ad) } catch {} }
+    }
     $p = New-Object Windows.Shapes.Path
     $veri = $RolSekil[$kod]; if (-not $veri) { $veri = $RolSekil['FILL'] }
     $p.Data = [Windows.Media.Geometry]::Parse($veri)
@@ -3338,12 +3356,12 @@ function Rol-Ikon([string]$kod, [double]$boy, [string]$renk) {
     $p.HorizontalAlignment = 'Center'; $p.VerticalAlignment = 'Center'; $p.IsHitTestVisible = $false
     return $p
 }
-# Düğmenin içindeki ikon yalnız rol değişince yeniden çizilir (Uid = çizili rol)
-function Rol-Dugme-Ciz($dugme, [string]$kod, [string]$renk) {
-    $anahtar = "$kod|$renk"
+# Düğmenin içindeki ikon yalnız rol değişince (ya da ikonu inince) yeniden çizilir (Uid = çizili durum)
+function Rol-Dugme-Ciz($dugme, [string]$kod, [string]$renk, [double]$soluk = 1) {
+    $anahtar = "$kod|$renk|$(Rol-Resmi-Var $kod)"
     if ($dugme.Uid -eq $anahtar -and $dugme.Child) { return }
     $dugme.Uid = $anahtar
-    $dugme.Child = Rol-Ikon $kod 16 $renk
+    $dugme.Child = Rol-Ikon $kod 16 $renk $soluk
 }
 # Rol menüsü: yatay ikon sırası; üzerine gelinen rolün adı altta yazar. Seçimin işi tıklama bittikten sonra çalışır.
 $script:RolMenuSonra = $null
@@ -3506,7 +3524,7 @@ function Rol-Yazisi-Guncelle {
         $Rol2Dugme.Visibility = 'Collapsed'
     } else {
         $Rol2Dugme.Visibility = 'Visible'
-        Rol-Dugme-Ciz $Rol2Dugme ([string]$Ayar.rol2) $RenkSoluk
+        Rol-Dugme-Ciz $Rol2Dugme ([string]$Ayar.rol2) $RenkSoluk 0.6   # yedek rol: daha soluk
         $RolOzet.Text = (Rol-Kod-Adi $r1) + (T ', yedek ' ', backup ') + (Rol-Kod-Adi $Ayar.rol2)
     }
     $RolOzet.ToolTip = $RolOzet.Text
