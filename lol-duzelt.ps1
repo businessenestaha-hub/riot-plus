@@ -15,6 +15,8 @@
 #   "LoL'ü aç" (LoL kapalıyken) sorar: LTK Manager ile / Rose ile / düz. Düz ve LTK açılışında Rose kapatılır, client'taki
 #   eklenti kancası kaldırılır; kalkmazsa LoL açılmaz. Riot Plus açılırken Rose kendiliğinden başlatılmaz.
 #   Custom skinler > "Rose'a aktar": LTK'daki .fantome modları Rose'un custom skin klasörüne kopyalar.
+#   11 Kas: durum satırının altında giriş yapılan hesap (Riot ID) + Porofessor / League of Graphs bağlantıları;
+#   "Maç" satırı açıksa maç başlayınca Porofessor canlı maç sayfası açılır. Rose sayfasında Rose'daki custom'ların listesi.
 #   11 Kas: belirli bir skine yazan modlar için "Rose sürümü" (rose_surumu.py, Python ister; hazırları rose-surumleri\ klasöründen de alınır):
 #   moda Rose'un biçiminde bir klasik skin dosyası eklenir, böylece ulti / imza / VFX Rose'da da gelir. Klasik skinin üstünde seçilir.
 # Arayüz Türkçe / İngilizce: başlıktaki TR / EN (ayarlar.json "dil").
@@ -841,13 +843,15 @@ function Ayar-Yukle {
                      # customSecim: şampiyon kimliği -> seçtiğin mod ('' = klasik). LTK'ya bunun maça uyan kısmı yazılır.
                      # ltkKapat: Riot Plus kapanınca LTK Manager da kapansın mı (maç sürüyorsa dokunulmaz)
                      # customKaynak: custom'ı kim uygular: 'ltk' (Riot Plus + LTK Manager, kendi modların) ya da 'rose' (Rose)
-                     customRakip = $false; customSecim = $null; ltkKapat = $true; customKaynak = 'ltk' }
+                     customRakip = $false; customSecim = $null; ltkKapat = $true; customKaynak = 'ltk'
+                     # poro: maç başlayınca Porofessor'da canlı maç sayfası açılsın mı
+                     poro = $false }
     foreach ($r in $Roller.Keys) { $a.pickListe[$r] = [int[]](0, 0, 0) }
     try {
         $j = [IO.File]::ReadAllText($AyarDosyasi) | ConvertFrom-Json
         if ("$($j.dil)" -eq 'en') { $a.dil = 'en' }
         if ("$($j.customKaynak)" -eq 'rose') { $a.customKaynak = 'rose' }
-        foreach ($ad in 'kabul', 'ban', 'pick', 'kilitle', 'custom', 'customRakip', 'ltkKapat') { if ($null -ne $j.$ad) { $a[$ad] = [bool]$j.$ad } }
+        foreach ($ad in 'kabul', 'ban', 'pick', 'kilitle', 'custom', 'customRakip', 'ltkKapat', 'poro') { if ($null -ne $j.$ad) { $a[$ad] = [bool]$j.$ad } }
         if ($null -ne $j.customSecim) { $a.customSecim = @{}; foreach ($p in $j.customSecim.PSObject.Properties) { $a.customSecim[$p.Name] = "$($p.Value)" } }
         if ($null -ne $j.bekleSn) { $a.bekleSn = [Math]::Max(0, [Math]::Min(25, [int]$j.bekleSn)) }
         if ($j.banListe) { $a.banListe = Liste3 $j.banListe }
@@ -2836,6 +2840,8 @@ $PencereXaml = @'
           </StackPanel>
         </Grid>
         <TextBlock x:Name="HalYazi" Margin="16,0,16,12" Foreground="#8C95A1" TextWrapping="Wrap"/>
+        <!-- Giriş yapılan LoL hesabı (Riot ID) + Porofessor / League of Graphs bağlantıları; client kapalıyken gizli -->
+        <TextBlock x:Name="HesapYazi" Margin="16,-7,16,12" Foreground="#8C95A1" TextWrapping="Wrap" Visibility="Collapsed"/>
 
         <!-- Bölümler gruplu kartlarda (HIG Lists and tables: inset grouped; Layout: ilgili öğeleri grupla).
              Başlık, kart içindeki satır yazısıyla aynı hizada; satırlar arasında soldan girintili ince ayraç. -->
@@ -2870,6 +2876,13 @@ $PencereXaml = @'
                   <TextBlock x:Name="CustomAd" VerticalAlignment="Center"/>
                   <TextBlock x:Name="CustomNot" Grid.Column="1" Style="{StaticResource Baglanti}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,8,0"/>
                   <ToggleButton x:Name="AnahtarCustom" Grid.Column="2" Style="{StaticResource Anahtar}" Tag="custom"/>
+                </Grid>
+                <Border Style="{StaticResource Ayrac}"/>
+                <Grid MinHeight="44" Margin="14,0,12,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="58"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <TextBlock x:Name="MacAd" VerticalAlignment="Center"/>
+                  <TextBlock x:Name="MacNot" Grid.Column="1" Foreground="#8C95A1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                  <ToggleButton x:Name="AnahtarPoro" Grid.Column="2" Style="{StaticResource Anahtar}" Tag="poro"/>
                 </Grid>
               </StackPanel>
             </Border>
@@ -2934,8 +2947,9 @@ $PencereXaml = @'
               <TextBlock x:Name="RoseUyari" Visibility="Collapsed"/>
               <!-- Rose'daki custom'lar: Rose'a aktarılan (ve Rose'un kendi menüsünden eklenen) custom skinler; altta şampiyon şeridi + kartlar -->
               <Grid Margin="2,0,2,8">
-                <TextBlock x:Name="RoseModBaslik" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="RoseModBaslik" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                   <TextBlock x:Name="RoseAktarBag" Style="{StaticResource Baglanti}" Foreground="#1FBF62" FontSize="12.5" Margin="0,0,14,0"/>
                   <TextBlock x:Name="RoseKlasorBag" Style="{StaticResource Baglanti}" Foreground="#1FBF62" FontSize="12.5"/>
                 </StackPanel>
@@ -3023,7 +3037,7 @@ foreach ($ad in 'Kok', 'Kahraman', 'KahramanResim', 'KahramanKarart', 'KahramanA
                  'CustomAd', 'CustomNot', 'AnahtarCustom', 'CustomGorunum', 'CustomKaydir', 'CustomListe',
                  'ModEkle', 'LtkAc', 'LtkGuncelle', 'CustomBilgi', 'AnaSayfa', 'SampiyonKaydir', 'SampiyonSerit', 'GorselDugme',
                  'GuncelleSerit', 'GuncelleYazi', 'GuncelleBaglanti', 'SekmeHap', 'BaslikCam', 'DilTRKutu', 'DilENKutu', 'GorselCam', 'RakipYazi', 'RakipNot', 'AnahtarRakip', 'LtkKapatYazi', 'LtkKapatNot', 'AnahtarLtkKapat',
-                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt', 'RoseAktar', 'RoseModBaslik', 'RoseAktarBag', 'RoseKlasorBag') {
+                 'KaynakLtk', 'KaynakLtkYazi', 'KaynakRose', 'KaynakRoseYazi', 'RosePanel', 'RoseAciklama', 'RoseDurumYazi', 'RoseDurumNot', 'RoseDugme', 'RoseUyari', 'LtkAlt', 'RoseAktar', 'RoseModBaslik', 'RoseAktarBag', 'RoseKlasorBag', 'HesapYazi', 'MacAd', 'MacNot', 'AnahtarPoro') {
     Set-Variable -Name $ad -Value (Bul $ad) -Scope Script
 }
 $Pencere.Title = $Baslik
@@ -3504,9 +3518,36 @@ function Portre-Guncelle {
     $KabulNot.Text = if ($script:SonFaz -eq 'ReadyCheck' -and $script:HazirYanit -eq 'Accepted') { T 'Kabul edildi' 'Accepted' } elseif ($Ayar.kabul) { T 'Maç bulununca kabul ederim' "I'll accept when a match is found" } else { T 'Kapalı; kabulü sen yaparsın' "Off; you'll accept yourself" }
 }
 
+# Hesap satırı: Riot ID + iki bağlantı. Yalnız hesap ya da dil değişince yeniden kurulur.
+function Hesap-Guncelle {
+    $h = $script:Hesap
+    $anahtar = if ($h) { "$(Hesap-Adi)|$($h.Bolge)|$($script:Dil)" } else { '' }
+    if ($anahtar -ne $script:HesapAnahtar) {
+        $script:HesapAnahtar = $anahtar
+        $HesapYazi.Inlines.Clear()
+        if ($h) {
+            $ad = New-Object Windows.Documents.Run((Hesap-Adi))
+            $ad.Foreground = Firca $RenkYazi; $ad.FontWeight = 'SemiBold'
+            $HesapYazi.Inlines.Add($ad)
+            $siteler = @(
+                @('poro', 'Porofessor', (T 'Canlı maç: maçtaki oyuncular, kazanma oranları (maçtayken dolu gelir)' 'Live game: players in your game and their win rates (filled while in game)')),
+                @('log', 'League of Graphs', (T 'Profilin: lig, maç geçmişi, şampiyon istatistikleri' 'Your profile: rank, match history, champion stats')))
+            foreach ($s in $siteler) {
+                $HesapYazi.Inlines.Add((New-Object Windows.Documents.Run('  ·  ')))
+                $b = New-Object Windows.Documents.Hyperlink((New-Object Windows.Documents.Run($s[1])))
+                $b.Tag = $s[0]; $b.Foreground = Firca $RenkYesil; $b.TextDecorations = $null; $b.Cursor = 'Hand'; $b.Focusable = $false; $b.ToolTip = $s[2]
+                $b.Add_Click({ Site-Ac "$($this.Tag)" })
+                $HesapYazi.Inlines.Add($b)
+            }
+        }
+        $HesapYazi.Visibility = if ($h) { 'Visible' } else { 'Collapsed' }
+    }
+    $MacNot.Text = if ($Ayar.poro) { T "Başlayınca Porofessor'u açarım" 'Opens Porofessor when it starts' } else { T "Kapalı; Porofessor'u sen açarsın" 'Off; you open Porofessor' }
+}
 function Gorunum-Guncelle {
     if ($script:Kapandi) { return }
     try { Alt-Bilgi } catch {}
+    try { Hesap-Guncelle } catch {}
     Kahraman-Guncelle
     Eylem-Guncelle
     Rol-Yazisi-Guncelle
@@ -3531,6 +3572,13 @@ function Durum-Guncelle {
 # ---- Şampiyon seçimi bölümü ----
 Cevir $SecimBaslik 'Şampiyon seçimi' 'Champ select'
 Cevir $KabulAd 'Kabul' 'Accept'
+Cevir $MacAd 'Maç' 'Game'
+Ipucu-Ver $AnahtarPoro "Açıkken maç başlayınca Porofessor'da canlı maç sayfan tarayıcıda açılır (maçtaki oyuncular, kazanma oranları). Oyun yüklenirken tarayıcı öne gelebilir." "When on, your live game page on Porofessor opens in the browser when a game starts (players, win rates). The browser may come to the front while the game loads."
+$AnahtarPoro.IsChecked = [bool]$Ayar.poro
+$AnahtarPoro.Add_Click({
+    $Ayar.poro = [bool]$this.IsChecked; Ayar-Kaydet
+    try { Hesap-Guncelle } catch {}
+})
 Cevir $BanAd 'Banla' 'Ban'
 Cevir $OynaAd 'Oyna' 'Play'
 Ipucu-Ver $AnahtarKabul 'Maç bulununca otomatik kabul' 'Auto-accept when a match is found'
@@ -4070,7 +4118,8 @@ function Rose-Liste-Olustur {
     $anahtarlar = @($gruplar.Keys | Sort-Object { Sampiyon-Adi ([int]$_) })
     $toplam = 0; $script:RoseModSayi = @{}
     foreach ($k in $anahtarlar) { $toplam += $gruplar[$k].Count; $script:RoseModSayi["$k"] = $gruplar[$k].Count }
-    $RoseModBaslik.Text = if ($toplam) { T "Rose'daki custom'lar · $toplam mod, $($anahtarlar.Count) şampiyon" "Customs in Rose · $toplam mods, $($anahtarlar.Count) champions" } else { T "Rose'daki custom'lar" 'Customs in Rose' }
+    $RoseModBaslik.Text = if ($toplam) { T "Rose'da $toplam mod · $($anahtarlar.Count) şampiyon" "$toplam mods in Rose · $($anahtarlar.Count) champions" } else { T "Rose'daki custom'lar" 'Customs in Rose' }
+    $RoseModBaslik.ToolTip = $RoseModBaslik.Text
     if (-not $script:RoseOdak -or -not $gruplar.Contains($script:RoseOdak)) {
         $simdi = "$(Custom-Sampiyon)"
         $script:RoseOdak = if ($gruplar.Contains($simdi)) { $simdi } elseif ($anahtarlar.Count) { $anahtarlar[0] } else { $null }
@@ -4342,6 +4391,68 @@ function Secim-Bilgisi($s) {
     return @{ Benim = $secim; Kilitli = $kilitli; PickVar = $pickVar; Rol = (Rol-Anahtar $benim.assignedPosition); Kalan = [double]$s.timer.adjustedTimeLeftInPhase / 1000; Banli = $banli; Alinan = $alinan }
 }
 
+# ---- Hesap (Riot ID) ve istatistik siteleri ----
+# Client'a giriş yapılan hesabın Riot ID'si ve bölgesi client'ın yerel API'sinden okunur (yalnız okuma). Bağlantılar
+# tarayıcıda açılır: Porofessor canlı maç sayfası (maçtaki oyuncular, kazanma oranları), League of Graphs profil sayfası.
+$script:Hesap = $null            # @{ Ad; Etiket; Bolge }
+$script:HesapBildirilen = ''
+$script:HesapAnahtar = $null
+$script:PoroMac = $false
+$script:PoroZaman = $null
+function Bolge-Kodu([string]$b) {
+    $k = $b.Trim().ToLowerInvariant()
+    $harita = @{ 'tr1' = 'tr'; 'euw1' = 'euw'; 'eun1' = 'eune'; 'na1' = 'na'; 'br1' = 'br'; 'jp1' = 'jp'; 'kr1' = 'kr'; 'la1' = 'lan'; 'la2' = 'las'; 'oc1' = 'oce'; 'oc' = 'oce'
+                 'me1' = 'me'; 'sg2' = 'sg'; 'tw2' = 'tw'; 'vn2' = 'vn'; 'ph2' = 'ph'; 'th2' = 'th' }
+    if ($harita.ContainsKey($k)) { return $harita[$k] }
+    return $k
+}
+function Hesap-Oku($lcu) {
+    $s = Lcu 'GET' '/lol-summoner/v1/current-summoner' $lcu $null 1500
+    if ($s.Kod -ne '200') { return $null }
+    try { $j = $s.Govde | ConvertFrom-Json } catch { return $null }
+    $ad = "$($j.gameName)"; $etiket = "$($j.tagLine)"
+    if (-not $ad) { $ad = "$($j.displayName)" }
+    if (-not $ad) { return $null }
+    $bolge = ''
+    $r = Lcu 'GET' '/riotclient/region-locale' $lcu $null 1500
+    if ($r.Kod -eq '200') { try { $bolge = Bolge-Kodu "$(($r.Govde | ConvertFrom-Json).region)" } catch {} }
+    return @{ Ad = $ad; Etiket = $etiket; Bolge = $bolge }
+}
+function Hesap-Adi { $h = $script:Hesap; if (-not $h) { return '' }; return "$($h.Ad)$(if ($h.Etiket) { '#' + $h.Etiket })" }
+function Site-Ac([string]$site, [bool]$oto = $false) {
+    $h = $script:Hesap
+    if (-not $h) { Yaz (T 'Hesabı okuyamadım; LoL açık ve giriş yapılmış olmalı.' "Couldn't read the account; LoL must be open and logged in.") $RenkTuruncu; return }
+    if (-not $h.Bolge) { Yaz (T 'Hesabın bölgesini okuyamadım; sayfayı açamıyorum.' "Couldn't read the account's region; can't open the page.") $RenkTuruncu; return }
+    $kimlik = [Uri]::EscapeDataString($h.Ad) + $(if ($h.Etiket) { '-' + [Uri]::EscapeDataString($h.Etiket) })
+    $url = if ($site -eq 'log') { "https://www.leagueofgraphs.com/summoner/$($h.Bolge)/$kimlik" } else { "https://porofessor.gg/live/$($h.Bolge)/$kimlik" }
+    try { Start-Process $url } catch { Yaz ((T 'Tarayıcıyı açamadım: ' "Couldn't open the browser: ") + $_.Exception.Message) $RenkTuruncu; return }
+    if ($oto) { Yaz (T "Maç başladı; Porofessor'da canlı maç sayfasını açtım." 'Game started; opened the live game page on Porofessor.') $RenkSoluk }
+}
+# Hesabı okur (client açıkken; okunana dek 5 sn'de bir, sonra dakikada bir), değişince bildirir; maç başlayınca
+# (ayar açıksa) Porofessor'u açar. Faz-Takip'ten çağrılır.
+function Hesap-Tick($lcu, $faz, $onceki) {
+    if (-not $lcu) { $script:Hesap = $null }
+    elseif (($script:Hesap -and $script:Tik % 60 -eq 0) -or (-not $script:Hesap -and $script:Tik % 5 -eq 0)) {
+        $h = $null; try { $h = Hesap-Oku $lcu } catch {}
+        if ($h) {
+            $script:Hesap = $h
+            $ad = Hesap-Adi
+            if ($ad -ne $script:HesapBildirilen) {
+                $script:HesapBildirilen = $ad
+                Yaz (T "LoL hesabın: $ad$(if ($h.Bolge) { ' (' + $h.Bolge.ToUpperInvariant() + ')' })." "Your LoL account: $ad$(if ($h.Bolge) { ' (' + $h.Bolge.ToUpperInvariant() + ')' }).") $RenkSoluk
+            }
+        }
+    }
+    $oyun = @('GameStart', 'InProgress')
+    if ($oyun -contains $faz) {
+        if (-not $script:PoroMac) {
+            $script:PoroMac = $true
+            # Yalnız maçın başladığını gördüysek (Riot Plus maç ortasında açıldıysa açılmaz); sayfa hazır olsun diye biraz beklenir
+            if ($Ayar.poro -and $onceki -and ($oyun + 'Reconnect') -notcontains $onceki) { $script:PoroZaman = [DateTime]::Now.AddSeconds(15) }
+        }
+    } elseif ($faz -and $faz -ne 'Reconnect') { $script:PoroMac = $false }
+    if ($script:PoroZaman -and [DateTime]::Now -ge $script:PoroZaman) { $script:PoroZaman = $null; if ($Ayar.poro) { Site-Ac 'poro' $true } }
+}
 function Faz-Takip {
     $onceki = $script:SonFaz
     if (-not $Deneme -and -not (Surec 'LeagueClientUx')) { $script:SonFaz = $null; $lcu = $null }
@@ -4365,6 +4476,7 @@ function Faz-Takip {
         if ($l) { $script:LobiRol1 = "$($l.localMember.firstPositionPreference)"; $script:LobiRol2 = "$($l.localMember.secondPositionPreference)" }
     }
     if ($faz -ne 'ChampSelect') { $script:SecimBilgi = $null }
+    try { Hesap-Tick $lcu $faz $onceki } catch {}
     if ($faz -ne $onceki -and $Deneme) { Durum-Guncelle }
     Gorunum-Guncelle
 }
