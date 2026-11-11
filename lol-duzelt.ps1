@@ -2828,15 +2828,16 @@ $PencereXaml = @'
         <StackPanel x:Name="AnaSayfa">
         <!-- Ana eylem -->
         <Grid Margin="16,12,16,8">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
           <Button x:Name="AnaDugme" Style="{StaticResource Birincil}"><TextBlock x:Name="AnaDugmeYazi"/></Button>
-          <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+          <!-- Roller: ana düğmenin yanında iki yuvarlak düğme (ana rol, yedek rol); tıklayınca altta rol ikonları açılır -->
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center">
+            <Border x:Name="Rol1Dugme" Width="36" Height="36" CornerRadius="18" Background="#1A212B" BorderBrush="#2F3A47" BorderThickness="1" Cursor="Hand"/>
+            <Border x:Name="Rol2Dugme" Width="36" Height="36" CornerRadius="18" Background="#1A212B" BorderBrush="#2F3A47" BorderThickness="1" Cursor="Hand" Margin="6,0,0,0"/>
+          </StackPanel>
+          <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
             <TextBlock x:Name="SiraSecim" Style="{StaticResource Baglanti}" Foreground="#ECE5D8"/>
-            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-              <TextBlock x:Name="Rol1Secim" Style="{StaticResource Baglanti}" Foreground="#8C95A1"/>
-              <TextBlock x:Name="RolAra" Foreground="#8C95A1"/>
-              <TextBlock x:Name="Rol2Secim" Style="{StaticResource Baglanti}" Foreground="#8C95A1"/>
-            </StackPanel>
+            <TextBlock x:Name="RolOzet" Foreground="#8C95A1" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
           </StackPanel>
         </Grid>
         <TextBlock x:Name="HalYazi" Margin="16,0,16,12" Foreground="#8C95A1" TextWrapping="Wrap"/>
@@ -3012,6 +3013,15 @@ $PencereXaml = @'
       </StackPanel>
 
       <!-- Açılır menüler: yuvarlak köşe + gölge (kenar boşluğu gölgeye yer açar, HorizontalOffset hizayı korur) -->
+      <Popup x:Name="RolMenu" AllowsTransparency="True" Placement="Bottom" StaysOpen="False" Focusable="False" HorizontalOffset="-10">
+        <Border Background="#1E2630" BorderBrush="#303A47" BorderThickness="1" CornerRadius="12" Margin="10,5,10,14" Padding="6,6,6,5">
+          <Border.Effect><DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="3" Opacity="0.45"/></Border.Effect>
+          <StackPanel>
+            <StackPanel x:Name="RolMenuSatir" Orientation="Horizontal"/>
+            <TextBlock x:Name="RolMenuAd" FontSize="11.5" Foreground="#8C95A1" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+          </StackPanel>
+        </Border>
+      </Popup>
       <Popup x:Name="SecimMenu" AllowsTransparency="True" Placement="Bottom" StaysOpen="False" Focusable="False" HorizontalOffset="-10">
         <Border Background="#1E2630" BorderBrush="#303A47" BorderThickness="1" CornerRadius="10" Margin="10,4,10,14" Padding="4" MinWidth="150">
           <Border.Effect><DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="3" Opacity="0.45"/></Border.Effect>
@@ -3030,7 +3040,7 @@ $PencereXaml = @'
 $Pencere = [Windows.Markup.XamlReader]::Parse($PencereXaml)
 function Bul($ad) { $Pencere.FindName($ad) }
 foreach ($ad in 'Kok', 'Kahraman', 'KahramanResim', 'KahramanKarart', 'KahramanAd', 'KahramanNot', 'BaslikCubugu', 'BaslikLogo', 'DilTR', 'DilEN', 'KucultDugme', 'KapatDugme',
-                 'AnaDugme', 'AnaDugmeYazi', 'SiraSecim', 'Rol1Secim', 'RolAra', 'Rol2Secim', 'HalYazi',
+                 'AnaDugme', 'AnaDugmeYazi', 'SiraSecim', 'Rol1Dugme', 'Rol2Dugme', 'RolOzet', 'RolMenu', 'RolMenuSatir', 'RolMenuAd', 'HalYazi',
                  'AnaGorunum', 'SecimBaslik', 'KabulAd', 'KabulNot', 'AnahtarKabul', 'BanAd', 'BanPortreler', 'AnahtarBan', 'OynaAd', 'OynaRol', 'OynaPortreler', 'AnahtarPick', 'Sekmeler',
                  'SorunPanel', 'SorunBaslik', 'Duzenleyici', 'DuzenleTablo', 'AnahtarKilitle', 'KilitleYazi', 'BekleYazi', 'BekleEksi', 'BekleDeger', 'BekleArti', 'DuzenleNot',
                  'MesajKutu', 'MesajLogo', 'MesajYazi', 'MesajSaat', 'SecimMenu', 'SecimListe', 'OneriPopup', 'OneriListe',
@@ -3199,7 +3209,7 @@ function Dil-Boya {
 }
 Dil-Boya
 
-# ---- Sekmeler: Ana sayfa / Rol listeleri / Custom skinler ----
+# ---- Sekmeler: Ana sayfa / Şampiyonlar (rol başına pick listeleri; eski adı Rol listeleri) / Custom skinler ----
 # Üç sayfa aynı yerde durur (görünmeyen Hidden, pencere boyu sabit). Sekmeler bölümlü kontrol: eşit genişlikte
 # üç parça, seçilinin altındaki hap (SekmeHap) seçim değişince kayarak yeni parçaya geçer.
 $script:Sekme = 'ana'
@@ -3243,7 +3253,7 @@ function Hap-Tasi([bool]$kaydir) {
 }
 $Sekmeler.Add_SizeChanged({ Hap-Tasi $false })
 function Sekme-Sec($ad) {
-    $SecimMenu.IsOpen = $false; $OneriPopup.IsOpen = $false
+    $SecimMenu.IsOpen = $false; $OneriPopup.IsOpen = $false; $RolMenu.IsOpen = $false
     $onceki = $script:Sekme
     $script:Sekme = $ad
     Hap-Tasi ($onceki -ne $ad)
@@ -3261,7 +3271,7 @@ function Sekme-Sec($ad) {
     Gorunum-Guncelle
 }
 Sekme-Olustur 'ana' 'Ana sayfa' 'Home'
-Sekme-Olustur 'roller' 'Rol listeleri' 'Role lists'
+Sekme-Olustur 'roller' 'Şampiyonlar' 'Champions'
 Sekme-Olustur 'custom' 'Custom skinler' 'Custom skins'
 Sekme-Boya
 
@@ -3309,18 +3319,78 @@ $SiraSecim.Add_MouseLeftButtonUp({
     if (-not (Basildi $this)) { return }
     Menu-Ac $SiraSecim @($SiraListesi | ForEach-Object { @{ Metin = (T $_.Tr $_.En); Deger = $_.Id; Secili = ($_.Id -eq [int]$Ayar.sira) } }) { param($d) $Ayar.sira = [int]$d; Ayar-Kaydet; Gorunum-Guncelle }
 })
-$Rol1Secim.Add_MouseLeftButtonUp({
+# Rol ikonları: kendi çizimimiz (20x20 kutuda yol verisi). Üst = sol üst köşe, Alt = sağ alt köşe, Orta = çapraz şerit,
+# Orman = ağaç, Destek = kalkan, Fark etmez = halka, '' (client'taki roller) = çizgi.
+$RolSekil = @{
+    'TOP'     = 'M2,2 H18 V6 H6 V18 H2 Z M12.5,12.5 H17.5 V17.5 H12.5 Z'
+    'BOTTOM'  = 'M18,18 H2 V14 H14 V2 H18 Z M2.5,2.5 H7.5 V7.5 H2.5 Z'
+    'MIDDLE'  = 'M13,2 H18 V7 L7,18 H2 V13 Z'
+    'JUNGLE'  = 'M10,1 L15.5,8.5 H13 L17,14.5 H11.5 V19 H8.5 V14.5 H3 L7,8.5 H4.5 Z'
+    'UTILITY' = 'M10,1 L17,4 V10 C17,14.5 14,17.5 10,19 C6,17.5 3,14.5 3,10 V4 Z'
+    'FILL'    = 'M10,2 A8,8 0 1 0 10.01,2 Z M10,6.5 A3.5,3.5 0 1 1 9.99,6.5 Z'
+    ''        = 'M3,8.5 H17 V11.5 H3 Z'
+}
+function Rol-Ikon([string]$kod, [double]$boy, [string]$renk) {
+    $p = New-Object Windows.Shapes.Path
+    $veri = $RolSekil[$kod]; if (-not $veri) { $veri = $RolSekil['FILL'] }
+    $p.Data = [Windows.Media.Geometry]::Parse($veri)
+    $p.Fill = Firca $renk; $p.Width = $boy; $p.Height = $boy; $p.Stretch = 'Uniform'
+    $p.HorizontalAlignment = 'Center'; $p.VerticalAlignment = 'Center'; $p.IsHitTestVisible = $false
+    return $p
+}
+# Düğmenin içindeki ikon yalnız rol değişince yeniden çizilir (Uid = çizili rol)
+function Rol-Dugme-Ciz($dugme, [string]$kod, [string]$renk) {
+    $anahtar = "$kod|$renk"
+    if ($dugme.Uid -eq $anahtar -and $dugme.Child) { return }
+    $dugme.Uid = $anahtar
+    $dugme.Child = Rol-Ikon $kod 16 $renk
+}
+# Rol menüsü: yatay ikon sırası; üzerine gelinen rolün adı altta yazar. Seçimin işi tıklama bittikten sonra çalışır.
+$script:RolMenuSonra = $null
+$script:RolMenuDeger = $null
+function Rol-Menu-Ac($hedef, [string[]]$kodlar, [string]$secili, [scriptblock]$sonra) {
+    $RolMenuSatir.Children.Clear()
+    $script:RolMenuSonra = $sonra
+    $RolMenuAd.Text = Rol-Kod-Adi $secili
+    $RolMenuAd.Tag = Rol-Kod-Adi $secili
+    foreach ($k in $kodlar) {
+        $b = New-Object Windows.Controls.Border
+        $b.Width = 38; $b.Height = 38; $b.CornerRadius = 10; $b.Margin = '1,0'; $b.Cursor = 'Hand'; $b.Tag = "$k"
+        $aktif = "$k" -eq $secili
+        $b.Uid = if ($aktif) { 'secili' } else { '' }
+        $b.Background = Firca $(if ($aktif) { '#2B3541' } else { '#00000000' })
+        $b.Child = Rol-Ikon "$k" 18 $(if ($aktif) { $RenkYesil } else { '#C9C2B6' })
+        $b.ToolTip = Rol-Kod-Adi "$k"
+        $b.Add_MouseEnter({ if ($this.Uid -ne 'secili') { $this.Background = Firca '#252E39' }; $RolMenuAd.Text = Rol-Kod-Adi "$($this.Tag)" })
+        $b.Add_MouseLeave({ if ($this.Uid -ne 'secili') { $this.Background = Firca '#00000000' }; $RolMenuAd.Text = "$($RolMenuAd.Tag)" })
+        $b.Add_MouseLeftButtonUp({
+            $_.Handled = $true
+            $script:RolMenuDeger = "$($this.Tag)"
+            $RolMenu.IsOpen = $false
+            if ($script:RolMenuSonra) { [void]$Pencere.Dispatcher.BeginInvoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ if ($script:RolMenuSonra) { & $script:RolMenuSonra $script:RolMenuDeger } }) }
+        })
+        [void]$RolMenuSatir.Children.Add($b)
+    }
+    $SecimMenu.IsOpen = $false
+    $RolMenu.PlacementTarget = $hedef
+    $RolMenu.IsOpen = $true
+}
+foreach ($d in $Rol1Dugme, $Rol2Dugme) {
+    $d.Add_MouseEnter({ $this.Background = Firca '#232C37' })
+    $d.Add_MouseLeave({ $this.Background = Firca '#1A212B' })
+}
+$Rol1Dugme.Add_MouseLeftButtonUp({
     if (-not (Basildi $this)) { return }
     if ([int]$Ayar.sira -eq 450) { return }
-    Menu-Ac $Rol1Secim @($Rol1Kodlar | ForEach-Object { @{ Metin = (Rol-Kod-Adi $_); Deger = $_; Secili = ($_ -eq [string]$Ayar.rol1) } }) { param($d) Rol1-Ata ([string]$d) }
+    Rol-Menu-Ac $Rol1Dugme ([string[]]@($Rol1Kodlar | Where-Object { $_ }) + @('')) ([string]$Ayar.rol1) { param($d) Rol1-Ata ([string]$d) }
 })
-$Rol2Secim.Add_MouseLeftButtonUp({
+$Rol2Dugme.Add_MouseLeftButtonUp({
     if (-not (Basildi $this)) { return }
-    Menu-Ac $Rol2Secim @($Rol2Kodlar | ForEach-Object { @{ Metin = (Rol-Kod-Adi $_); Deger = $_; Secili = ($_ -eq [string]$Ayar.rol2) } }) { param($d) Rol2-Ata ([string]$d) }
+    Rol-Menu-Ac $Rol2Dugme ([string[]]@($Rol2Kodlar)) ([string]$Ayar.rol2) { param($d) Rol2-Ata ([string]$d) }
 })
 Ipucu-Ver $SiraSecim 'Hangi sıraya girilsin; değiştirmek için tıkla' 'Which queue to join; click to change'
-Ipucu-Ver $Rol1Secim "Ana rol; değiştirmek için tıkla. Client'taki roller: client'ta seçili olana dokunmaz." "Main role; click to change. Client's roles: keep what's set in the client."
-Ipucu-Ver $Rol2Secim 'Yedek rol; değiştirmek için tıkla' 'Backup role; click to change'
+Ipucu-Ver $Rol1Dugme "Ana rol; değiştirmek için tıkla. Çizgi (client'taki roller): client'ta seçili olana dokunmaz." "Main role; click to change. The dash (client's roles): keep what's set in the client."
+Ipucu-Ver $Rol2Dugme 'Yedek rol; değiştirmek için tıkla' 'Backup role; click to change'
 
 # ---- Rol ve kahraman yardımcıları ----
 function Rol-Kodundan($kod) { switch ("$kod") { 'TOP' { 'top' } 'JUNGLE' { 'jungle' } 'MIDDLE' { 'middle' } 'BOTTOM' { 'bottom' } 'UTILITY' { 'utility' } default { $null } } }
@@ -3421,22 +3491,25 @@ function Eylem-Guncelle {
 function Rol-Yazisi-Guncelle {
     $SiraSecim.Text = Sira-Adi $Ayar.sira
     if ([int]$Ayar.sira -eq 450) {
-        $Rol1Secim.Text = T 'Rol seçimi yok' 'No roles'; $Rol1Secim.Cursor = 'Arrow'
-        $RolAra.Visibility = 'Collapsed'; $Rol2Secim.Visibility = 'Collapsed'; return
+        $Rol1Dugme.Visibility = 'Collapsed'; $Rol2Dugme.Visibility = 'Collapsed'
+        $RolOzet.Text = T 'Rol seçimi yok' 'No roles'; return
     }
-    $Rol1Secim.Cursor = 'Hand'
-    if (-not $Ayar.rol1) {
+    $r1 = [string]$Ayar.rol1
+    $Rol1Dugme.Visibility = 'Visible'
+    Rol-Dugme-Ciz $Rol1Dugme $r1 $RenkYazi
+    if (-not $r1) {
         $bilinen = Rol-Kodundan $script:LobiRol1
-        $Rol1Secim.Text = if ($bilinen) { (T "Client'taki roller: " "Client's roles: ") + (Rol-Kod-Adi $script:LobiRol1) } else { Rol-Kod-Adi '' }
-        $RolAra.Visibility = 'Collapsed'; $Rol2Secim.Visibility = 'Collapsed'
-    } elseif ($Ayar.rol1 -eq 'FILL') {
-        $Rol1Secim.Text = Rol-Kod-Adi 'FILL'
-        $RolAra.Visibility = 'Collapsed'; $Rol2Secim.Visibility = 'Collapsed'
+        $RolOzet.Text = if ($bilinen) { (T "Client'taki roller: " "Client's roles: ") + (Rol-Kod-Adi $script:LobiRol1) } else { Rol-Kod-Adi '' }
+        $Rol2Dugme.Visibility = 'Collapsed'
+    } elseif ($r1 -eq 'FILL') {
+        $RolOzet.Text = Rol-Kod-Adi 'FILL'
+        $Rol2Dugme.Visibility = 'Collapsed'
     } else {
-        $Rol1Secim.Text = Rol-Kod-Adi $Ayar.rol1
-        $RolAra.Text = T ', yedek ' ', backup '; $RolAra.Visibility = 'Visible'
-        $Rol2Secim.Text = Rol-Kod-Adi $Ayar.rol2; $Rol2Secim.Visibility = 'Visible'
+        $Rol2Dugme.Visibility = 'Visible'
+        Rol-Dugme-Ciz $Rol2Dugme ([string]$Ayar.rol2) $RenkSoluk
+        $RolOzet.Text = (Rol-Kod-Adi $r1) + (T ', yedek ' ', backup ') + (Rol-Kod-Adi $Ayar.rol2)
     }
+    $RolOzet.ToolTip = $RolOzet.Text
 }
 
 $script:SurecDurum = @{ Riot = $false; Lol = 'kapali'; Mac = $false }
