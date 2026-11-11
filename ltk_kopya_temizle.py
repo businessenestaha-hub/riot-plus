@@ -1,5 +1,5 @@
-# LTK bir paketi yerinde güncellemeyip "<slug>-2" diye ikinci kopya eklerse: ESKİ kopyayı kaldırır, Riot Plus seçimini yeniye çevirir.
-# 9 Kas 2026. Riot Plus KAPALIYKEN çalıştır. kullanim: py ltk_kopya_temizle.py
+# LTK bir paketi yerinde güncellemeyip "<slug>-2" diye ikinci kopya eklerse: ESKİ kopyayı kaldırır, LSM seçimini yeniye çevirir.
+# 9 Kas 2026. LSM KAPALIYKEN çalıştır. kullanim: py ltk_kopya_temizle.py
 import json, os, shutil, subprocess, time
 D = os.path.join(os.environ['APPDATA'], 'dev.leaguetoolkit.manager')
 RP = r'C:\Users\Gaming\projects\lol-duzelt\ayarlar.json'

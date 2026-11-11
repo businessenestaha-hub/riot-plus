@@ -2,8 +2,8 @@
 #   --temizle            : slug'ı "rehabilite-" ile başlamayan modları kaldırır (library.json mods/folders/profiles,
 #                          mod-health-verdicts.json, wad-reports.json; mod dosyaları Geri Dönüşüm Kutusu'na)
 #   --ekle a.fantome ... : LTK'ya içe alır (ltk-manager.exe <dosyalar>), library.json'da görünmesini bekler, LTK'yı durdurur
-#   --sec 157=slug ...   : Riot Plus ayarlar.json customSecim (şampiyon id -> mod) ; silinmiş moda bakan seçimler her zaman temizlenir
-# Riot Plus KAPALIYKEN ve maç açık DEĞİLKEN çalıştır (Riot Plus açıkken ayarlar.json'u kendi yazar).
+#   --sec 157=slug ...   : LSM ayarlar.json customSecim (şampiyon id -> mod) ; silinmiş moda bakan seçimler her zaman temizlenir
+# LSM KAPALIYKEN ve maç açık DEĞİLKEN çalıştır (LSM açıkken ayarlar.json'u kendi yazar).
 # JSON'lar Python ile düzenlenir: wad-reports.json'daki 64 bit parmak izi PowerShell'de yuvarlanıp bozulur.
 import argparse, json, os, shutil, subprocess, sys, time
 
@@ -29,7 +29,7 @@ def surecler():
 
 def riot_plus_acik():
     c = subprocess.run(['powershell', '-NoProfile', '-Command',
-                        "(Get-Process | Where-Object { $_.MainWindowTitle -eq 'Riot Plus' }).Count"], capture_output=True, text=True)
+                        "(Get-Process | Where-Object { $_.MainWindowTitle -eq 'LSM' }).Count"], capture_output=True, text=True)
     return c.stdout.strip() not in ('', '0')
 
 
@@ -55,7 +55,7 @@ a.add_argument('--ekle', nargs='*', default=[])
 a.add_argument('--sec', nargs='*', default=[])
 a = a.parse_args()
 if riot_plus_acik():
-    sys.exit('Riot Plus acik: once kapat')
+    sys.exit('LSM acik: once kapat')
 if 'League of Legends.exe' in surecler():
     sys.exit('Mac acik: LTK ye dokunma')
 zaman = time.strftime('%Y%m%d-%H%M')

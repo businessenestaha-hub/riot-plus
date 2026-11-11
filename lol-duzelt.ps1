@@ -1,5 +1,7 @@
-﻿# Riot Plus (eski adı LoL Düzelt) v6. Kısayol (Ctrl+Alt+L) bu pencereyi açar.
-# v6: Custom skinler. Modları oyuna LTK Manager (League Toolkit) yükler; Riot Plus hangi şampiyonda hangi modun
+﻿# LSM - LoL Skin Manager (eski adları Riot Plus, LoL Düzelt) v6. Kısayol (Ctrl+Alt+L) bu pencereyi açar.
+# 11 Kas 2026: ad Riot Plus'tan LSM'ye değişti. Dosya adları (lol-duzelt.ps1, riot-plus.ico), ayar ve kayıt alanları
+# (riotPlusLtkId ...) ve geçici klasör adları eski haliyle kaldı; onlara bağlı kısayollar ve kayıtlar bozulmasın diye.
+# v6: Custom skinler. Modları oyuna LTK Manager (League Toolkit) yükler; LSM hangi şampiyonda hangi modun
 #     açık olacağını seçer, LTK'yı tepside motor olarak çalıştırır, LTK'nın yeni sürümünü açılışta ve açık kaldıkça
 #     3 saatte bir sorar; yeni sürüm varsa kahraman görselinin üstünde yeşil "Güncelle" şeridi kalır (5 Kas).
 #     LTK'nın skinhack kontrolüne takılan modlar listelenmez (sahip olunmayan ücretli skin içeriği).
@@ -9,11 +11,11 @@
 # v6.4 (7 Kas 2026) Apple HIG uyarlaması: cam başlık kapsülü, bölümlü sekme kontrolü, gruplu bölüm kartları,
 #   kapsül düğmeler + basma durumu, kayan anahtar. Önceki görünüm: yedek\lol-duzelt-v6.3-apple-oncesi-2026-11-07.ps1
 # v6.6 (10 Kas 2026) Custom'ın iki kaynağı: Custom skinler sayfasının üstündeki seçici (ayarlar.json "customKaynak").
-#   LTK Manager: eskisi gibi; kendi eklediğin modlar, seçimi Riot Plus LTK'ya yazar.
-#   Rose: Rose'u Riot Plus başlatır / durdurur; Rose LTK'yı kendisi sürdüğü için bu kipte Riot Plus LTK'ya dokunmaz.
+#   LTK Manager: eskisi gibi; kendi eklediğin modlar, seçimi LSM LTK'ya yazar.
+#   Rose: Rose'u LSM başlatır / durdurur; Rose LTK'yı kendisi sürdüğü için bu kipte LSM LTK'ya dokunmaz.
 #   İkisi aynı anda çalışmaz: Rose yalnız kendi açtığı LTK'yı kullanabilir ve her maçta LTK'daki açık modları kapatır.
 #   "LoL'ü aç" (LoL kapalıyken) sorar: LTK Manager ile / Rose ile / düz. Düz ve LTK açılışında Rose kapatılır, client'taki
-#   eklenti kancası kaldırılır; kalkmazsa LoL açılmaz. Riot Plus açılırken Rose kendiliğinden başlatılmaz.
+#   eklenti kancası kaldırılır; kalkmazsa LoL açılmaz. LSM açılırken Rose kendiliğinden başlatılmaz.
 #   Custom skinler > "Rose'a aktar": LTK'daki .fantome modları Rose'un custom skin klasörüne kopyalar.
 #   11 Kas: 'Kurulum' sekmesi: LTK Manager / Rose / Python durumu ve kurma düğmeleri (hepsi resmi kaynağından, doğrulanarak).
 #   11 Kas: durum satırının altında giriş yapılan hesap (Riot ID) + Porofessor / League of Graphs bağlantıları;
@@ -28,7 +30,7 @@
 #  5 / ana düğme: Sıraya gir (lobi + roller + sıra), sıradayken Sıradan çık, seçimde/maçta LoL'e geç
 #  Şampiyon seçimi: maçı kabul et, ban at, rolüne göre pick at (rol listeleri "düzenle" görünümünde)
 #  Maç açıkken 1-5 ve Esc kısayolları kapalı. Esc pencereyi küçültür. Son mesajlar altta; ayrıntı gunluk.txt'de.
-# Açmak için: "Riot Plus.cmd" (çift tıkla). Masaüstü kısayolu + Ctrl+Alt+L için bir kez "Kisayol Olustur.cmd".
+# Açmak için: "LSM.cmd" (çift tıkla). Masaüstü kısayolu + Ctrl+Alt+L için bir kez "Kisayol Olustur.cmd".
 # Parametreler: -Islem sira  açılınca ana düğmeye basar (araç zaten açıksa açık olana söyler)
 #               -Sessiz      yalnız deneme: pencere gösterilmez, odak çalınmaz, mesajlar konsola da yazılır
 #               -Kare x.png  -Sessiz ile: pencereyi göstermeden durumların resmini kaydeder
@@ -64,14 +66,14 @@ $SiraListesi = @(
     @{ Id = 480; Tr = 'Tam Gaz';               En = 'Swiftplay' }
     @{ Id = 450; Tr = 'ARAM';                  En = 'ARAM' }
 )
-# Custom skinler: LTK Manager arka planda (tepside) çalışır, Riot Plus yalnız seçimi yazar
+# Custom skinler: LTK Manager arka planda (tepside) çalışır, LSM yalnız seçimi yazar
 $LtkExe         = 'C:\Program Files\LTK Manager\ltk-manager.exe'
 $LtkVeri        = Join-Path $env:APPDATA 'dev.leaguetoolkit.manager'
 $LtkSurumUrl    = 'https://api.github.com/repos/LeagueToolkit/ltk-manager/releases/latest'
 $LtkImzaci      = 'CN=Natoken LLC'   # LTK kurulum dosyasının imzacısı (4 Kas 2026'da doğrulandı)
 $PatcherBekleSn = 150                # LTK açıldıktan sonra patcher için en fazla bekleme (ilk derleme ~70 sn sürdü)
 # Custom'ın ikinci kaynağı: Rose (github.com/Alban1911/Rose). Rose LTK Manager'ı kendisi açıp kapatır ve yalnız kendi
-# başlattığı LTK'ya köprü yükleyebilir; bu yüzden Rose kipinde Riot Plus LTK'yı ne açar ne kapatır ne de kütüphanesine yazar.
+# başlattığı LTK'ya köprü yükleyebilir; bu yüzden Rose kipinde LSM LTK'yı ne açar ne kapatır ne de kütüphanesine yazar.
 $RoseExe        = 'C:\Program Files\Rose\Rose.exe'
 $RoseVeri       = Join-Path $env:LOCALAPPDATA 'Rose'
 $RoseIndirUrl   = 'https://github.com/Alban1911/Rose/releases/latest'
@@ -262,7 +264,7 @@ public static class ModWad {
 # ---- Dil ----
 $script:Dil = 'tr'
 function T([string]$tr, [string]$en) { if ($script:Dil -eq 'en') { return $en }; return $tr }
-function Baslik-Metni { if ($Deneme) { T 'Riot Plus (deneme)' 'Riot Plus (test)' } else { 'Riot Plus' } }
+function Baslik-Metni { if ($Deneme) { T 'LSM (deneme)' 'LSM (test)' } else { 'LSM' } }
 function Rol-Adi($r) { if ($script:Dil -eq 'en') { $RollerEn[$r] } else { $Roller[$r] } }
 function Rol-Kod-Adi($kod) {
     if (-not $kod) { return (T "Client'taki roller" "Client's roles") }
@@ -273,7 +275,7 @@ function Sira-Adi($id) {
     $s = $SiraListesi | Where-Object { $_.Id -eq [int]$id } | Select-Object -First 1
     if ($s) { T $s.Tr $s.En } else { "#$id" }
 }
-$Baslik = 'Riot Plus'
+$Baslik = 'LSM'
 
 function One-Getir($h) {
     if (-not $h -or $h -eq [IntPtr]::Zero) { return }
@@ -849,8 +851,8 @@ function Ayar-Yukle {
                      sira = 420; rol1 = ''; rol2 = 'FILL'; pickListe = [ordered]@{}; custom = $false; customGorsel = @{}; customAd = @{}
                      # customRakip: custom'lar rakiplerde de görünsün mü (kapalı = maçta yalnız oynadığın şampiyonunki açık)
                      # customSecim: şampiyon kimliği -> seçtiğin mod ('' = klasik). LTK'ya bunun maça uyan kısmı yazılır.
-                     # ltkKapat: Riot Plus kapanınca LTK Manager da kapansın mı (maç sürüyorsa dokunulmaz)
-                     # customKaynak: custom'ı kim uygular: 'ltk' (Riot Plus + LTK Manager, kendi modların) ya da 'rose' (Rose)
+                     # ltkKapat: LSM kapanınca LTK Manager da kapansın mı (maç sürüyorsa dokunulmaz)
+                     # customKaynak: custom'ı kim uygular: 'ltk' (LSM + LTK Manager, kendi modların) ya da 'rose' (Rose)
                      customRakip = $false; customSecim = $null; ltkKapat = $true; customKaynak = 'ltk'
                      # poro: maç başlayınca Porofessor'da canlı maç sayfası açılsın mı
                      poro = $false }
@@ -1343,7 +1345,7 @@ function Ping-Ozet {
 }
 
 # ---- Custom skinler (LTK Manager) ----
-# Modları oyuna LTK Manager'ın patcher'ı yükler; Riot Plus kendisi oyuna hiçbir şey enjekte etmez.
+# Modları oyuna LTK Manager'ın patcher'ı yükler; LSM kendisi oyuna hiçbir şey enjekte etmez.
 # Seçim değişince: LTK durdurulur, etkin profilin enabledMods listesi library.json'a yazılır (ilk yazımda yedek alınır),
 # LTK tepside yeniden açılır ve kendi "patcher'ı her açılışta başlat" ayarıyla oyuna hazır bekler.
 # LTK'nın skinhack kontrolüne takılan modlar (sahip olunmayan ücretli skin içeriği) listelenmez; LTK da açılışta kapatır.
@@ -1368,7 +1370,7 @@ $script:KaynakIstek = $null          # Kaynak-Degistir'in geçeceği kaynak ('lt
 $script:RoseDurum = @{ Kurulu = $false; Acik = $false }   # Rose-Durum-Oku doldurur
 
 # ---- Rose (custom'ın ikinci kaynağı) ----
-# Rose yönetici olarak çalışır; Riot Plus yönetici değildir. Bu yüzden başlatma ya Rose'un kendi zamanlanmış görevinden
+# Rose yönetici olarak çalışır; LSM yönetici değildir. Bu yüzden başlatma ya Rose'un kendi zamanlanmış görevinden
 # (Rose ayarlarındaki "Windows ile başlat" açıksa var; izin sormaz) ya da yönetici izniyle olur. Dışarıdan nazik kapatma yolu
 # yok (tepsi menüsündeki Quit dışında); Rose-Durdur süreci yönetici izniyle sonlandırır ve Pengu kancasını kaldırır.
 function Rose-Kipi { "$($Ayar.customKaynak)" -eq 'rose' }
@@ -1496,13 +1498,13 @@ function Rose-Girdileri {
     } catch {}
     return $k
 }
-# Rose kipinde custom'ı açar: Riot Plus'ın açtığı LTK kapatılır (Rose açık LTK görürse o maçta skin yüklemeyi atlar), Rose başlatılır
+# Rose kipinde custom'ı açar: LSM'nin açtığı LTK kapatılır (Rose açık LTK görürse o maçta skin yüklemeyi atlar), Rose başlatılır
 function Rose-Uygula([switch]$Hazirlik) {
     $script:CustomIstek = $null
     if (-not (Rose-Kurulu)) { Yaz (T 'Rose kurulu değil; Custom skinler sayfasından indirebilirsin.' 'Rose is not installed; get it from the Custom skins page.') $RenkTuruncu; Custom-Yenile; return }
     if (-not (Ltk-Kurulu)) { Yaz (T "Rose skinleri LTK Manager üzerinden uygular; önce LTK kurulmalı (kaynağı LTK'ya alıp kurabilirsin)." 'Rose applies skins through LTK Manager; install LTK first (switch the source to LTK to install it).') $RenkTuruncu; Custom-Yenile; return }
     if (Rose-Acik) { if (-not $Hazirlik) { Yaz (T 'Rose zaten çalışıyor.' 'Rose is already running.') $RenkSoluk }; Custom-Yenile; return }
-    # Riot Plus açılırken Rose kendiliğinden başlatılmaz: hangi hesapla gireceğin belli değil. Rose yalnız sen isteyince açılır.
+    # LSM açılırken Rose kendiliğinden başlatılmaz: hangi hesapla gireceğin belli değil. Rose yalnız sen isteyince açılır.
     if ($Hazirlik) { Yaz (T "Kaynak Rose ama Rose çalışmıyor. Açmak için: LoL'ü aç > Rose ile aç." "Source is Rose but Rose isn't running. To start: Open LoL > Open with Rose.") $RenkSoluk; Custom-Yenile; return }
     if (Rose-Mesgul-Faz) { Yaz (T 'Seçimde ya da maçtayken Rose başlatılmaz; maç bitince dene.' "Rose isn't started during champ select or a game; try after.") $RenkTuruncu; Custom-Yenile; return }
     if (Ltk-Acik) {
@@ -1522,12 +1524,12 @@ function Kaynak-Degistir {
         if (-not (Rose-Durdur)) { Custom-Yenile; return }
         $Ayar.customKaynak = 'ltk'; Ayar-Kaydet
         $script:LtkBilinenAcik = $null; $script:CustomMacSon = 0
-        Yaz (T "Kaynak: LTK Manager. Custom'ları yine Riot Plus yönetiyor." 'Source: LTK Manager. Riot Plus manages your customs again.') $RenkSoluk
+        Yaz (T "Kaynak: LTK Manager. Custom'ları yine LSM yönetiyor." 'Source: LTK Manager. LSM manages your customs again.') $RenkSoluk
         if ($Ayar.custom -and (Ltk-Kurulu)) { $script:CustomIstek = $null; Custom-Uygula } else { Custom-Yenile }
     } else {
         $Ayar.customKaynak = 'rose'; Ayar-Kaydet
         $script:PatcherBekle = $null
-        Yaz (T "Kaynak: Rose. Bu kipte Riot Plus LTK'ya dokunmaz; skinler Rose'dan gelir." "Source: Rose. Riot Plus leaves LTK alone in this mode; skins come from Rose.") $RenkSoluk
+        Yaz (T "Kaynak: Rose. Bu kipte LSM LTK'ya dokunmaz; skinler Rose'dan gelir." "Source: Rose. LSM leaves LTK alone in this mode; skins come from Rose.") $RenkSoluk
         if ($Ayar.custom) { Rose-Uygula }
         else { if (Ltk-Acik) { Ltk-Durdur }; Custom-Yenile }
     }
@@ -1634,7 +1636,7 @@ function Python-Parca-Var([switch]$Yenile) {
 # Bir dosyayı indirir (beklerken arayüz donmaz); olmazsa $false
 function Dosya-Indir([string]$url, [string]$yol) {
     [void](New-Item -ItemType Directory -Force (Split-Path -Parent $yol))
-    $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'RiotPlus')
+    $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'LSM')
     $g = $wc.DownloadFileTaskAsync($url, $yol)
     while (-not $g.IsCompleted) { Bekle 0.3 }
     return (-not $g.IsFaulted -and (Test-Path -LiteralPath $yol) -and (Get-Item -LiteralPath $yol).Length -gt 0)
@@ -1653,7 +1655,7 @@ function Python-Kur {
         $k = Surec-Calis $yol '/passive InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_test=0 Include_doc=0'
         if ($k -ne 0 -and $k -ne 3010) { Yaz ((T 'Python kurulumu tamamlanmadı, kod ' "Python setup didn't finish, code ") + "$k") $RenkTuruncu; Kurulum-Yenile; return }
         $py = Python-Bul -Yenile
-        if (-not $py) { Yaz (T "Python kuruldu ama bulamadım; Riot Plus'ı kapatıp yeniden aç." "Python was installed but I can't find it; close and reopen Riot Plus.") $RenkTuruncu; Kurulum-Yenile; return }
+        if (-not $py) { Yaz (T "Python kuruldu ama bulamadım; LSM'yi kapatıp yeniden aç." "Python was installed but I can't find it; close and reopen LSM.") $RenkTuruncu; Kurulum-Yenile; return }
         Yaz (T 'Python kuruldu.' 'Python installed.') $RenkSoluk
     }
     if (-not (Python-Parca-Var -Yenile)) {
@@ -1671,7 +1673,7 @@ function Rose-Kur {
     if ($Deneme) { Yaz 'deneme: Rose kurulmadı' $RenkSoluk; return }
     Yaz (T "Rose'un son sürümünü soruyorum..." "Looking up Rose's latest release...") $RenkSoluk
     $wc = New-Object Net.WebClient; $wc.Encoding = [Text.Encoding]::UTF8
-    $wc.Headers.Add('User-Agent', 'RiotPlus'); $wc.Headers.Add('Accept', 'application/vnd.github+json')
+    $wc.Headers.Add('User-Agent', 'LSM'); $wc.Headers.Add('Accept', 'application/vnd.github+json')
     $g = $wc.DownloadStringTaskAsync($RoseSurumUrl)
     while (-not $g.IsCompleted) { Bekle 0.3 }
     $a = $null
@@ -1941,7 +1943,7 @@ function Custom-Gruplar {
 # LTK'da şu an açık olan mod (grubun içinden)
 function Ltk-Acik-Mod($liste) { foreach ($m in @($liste)) { if ($m.Acik) { return $m } }; return $null }
 function Grup-Anahtari($liste) { $ilk = @($liste)[0]; if ($ilk -and $ilk.Ana) { "$($ilk.Ana)" } else { 'diger' } }
-# Bu şampiyon için seçtiğin mod. Kaynak Riot Plus'ın kendi kaydı (customSecim): "yalnız benim şampiyonum" kipinde LTK'da
+# Bu şampiyon için seçtiğin mod. Kaynak LSM'nin kendi kaydı (customSecim): "yalnız benim şampiyonum" kipinde LTK'da
 # yalnız maçtaki şampiyonun modu açık durur, diğer seçimler orada görünmez ama kayıtta kalır. Kayıt yoksa LTK'da açık olan.
 function Custom-Secili($liste) {
     $k = Grup-Anahtari $liste
@@ -2197,7 +2199,7 @@ function Ds-Sonraki($is) {
     $q = $is.Aramalar[0]; $is.Aramalar.RemoveAt(0)
     $script:DsSonIstek = [DateTime]::Now
     try {
-        $wc = New-Object Net.WebClient; $wc.Encoding = [Text.Encoding]::UTF8; $wc.Headers.Add('User-Agent', 'RiotPlus')
+        $wc = New-Object Net.WebClient; $wc.Encoding = [Text.Encoding]::UTF8; $wc.Headers.Add('User-Agent', 'LSM')
         $is.Gorev = $wc.DownloadStringTaskAsync("$DsApi`?search=$([uri]::EscapeDataString($q))&page=0&size=40"); $is.Asama = 'ara'
     } catch { $is.Gorev = $null; $is.Asama = 'sira' }
 }
@@ -2247,7 +2249,7 @@ function Ds-Tick {
             try { $aday = Ds-Sec $is.Mod (($g.Result | ConvertFrom-Json).content) } catch {}
             if ($aday) {
                 $is.Asama = 'indir'; $is.Yol = "$(Join-Path $CustomGorselKlasoru "$sha-ds.jpg").iniyor"; $is.Kaynak = "$($aday.imagePath)"
-                try { [void](New-Item -ItemType Directory -Force $CustomGorselKlasoru); $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'RiotPlus'); $is.Gorev = $wc.DownloadFileTaskAsync("$DsCdn$($aday.imagePath)", $is.Yol) } catch { $script:DsIsler.Remove($sha) }
+                try { [void](New-Item -ItemType Directory -Force $CustomGorselKlasoru); $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'LSM'); $is.Gorev = $wc.DownloadFileTaskAsync("$DsCdn$($aday.imagePath)", $is.Yol) } catch { $script:DsIsler.Remove($sha) }
             } elseif ($is.Aramalar.Count) { $is.Asama = 'sira' }
             else { Ds-Sonuc-Yaz $sha 'yok'; $script:DsIsler.Remove($sha) }
         } else {
@@ -2345,13 +2347,13 @@ function Ltk-Durdur {
     $son = [DateTime]::Now.AddSeconds(8)
     while ([DateTime]::Now -lt $son -and @(Get-Process -Name 'ltk-manager', 'ltk_patcher_host' -ErrorAction SilentlyContinue).Count) { Bekle 0.3 }
 }
-# Riot Plus kapanırken LTK'yı da kapatır (ayar: ltkKapat). Maç sürüyorsa dokunmaz: oyun açıkken LTK durdurulmaz.
+# LSM kapanırken LTK'yı da kapatır (ayar: ltkKapat). Maç sürüyorsa dokunmaz: oyun açıkken LTK durdurulmaz.
 function Ltk-Kapanista-Durdur($adlar = @('ltk-manager', 'ltk_patcher_host'), $oyun = 'League of Legends') {
     if ($Deneme -or -not $Ayar.ltkKapat) { return 'atlandi' }
     if (Rose-Kipi) { return 'atlandi' }   # Rose kipinde LTK Rose'undur; Rose kendi açtığını kendi kapatır
     $p = @(Get-Process -Name $adlar -ErrorAction SilentlyContinue)
     if (-not $p.Count) { return 'yok' }
-    $not = if (Get-Process -Name $oyun -ErrorAction SilentlyContinue) { "Riot Plus kapandı; maç sürdüğü için LTK'ya dokunulmadı." } else { $p | Stop-Process -Force -ErrorAction SilentlyContinue; "Riot Plus kapandı; LTK de kapatıldı." }
+    $not = if (Get-Process -Name $oyun -ErrorAction SilentlyContinue) { "LSM kapandı; maç sürdüğü için LTK'ya dokunulmadı." } else { $p | Stop-Process -Force -ErrorAction SilentlyContinue; "LSM kapandı; LTK de kapatıldı." }
     try { [IO.File]::AppendAllText($GunlukDosyasi, "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))  $not`r`n", (New-Object Text.UTF8Encoding($false))) } catch {}
     if ($not -match 'dokunulmadı') { 'mac' } else { 'durdu' }
 }
@@ -2556,7 +2558,7 @@ function Ltk-Surum-Sor {
     try {
         $wc = New-Object Net.WebClient
         $wc.Encoding = [Text.Encoding]::UTF8
-        $wc.Headers.Add('User-Agent', 'RiotPlus'); $wc.Headers.Add('Accept', 'application/vnd.github+json')
+        $wc.Headers.Add('User-Agent', 'LSM'); $wc.Headers.Add('Accept', 'application/vnd.github+json')
         $script:LtkSurumGorevi = $wc.DownloadStringTaskAsync($LtkSurumUrl)
     } catch {}
 }
@@ -2605,7 +2607,7 @@ function Ltk-Kur {
     [void](New-Item -ItemType Directory -Force $klasor)
     $yol = Join-Path $klasor "LTK.Manager_$($s.Surum)_x64-setup.exe"
     Yaz (T "LTK $($s.Surum) iniyor..." "Downloading LTK $($s.Surum)...") $RenkSoluk
-    $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'RiotPlus')
+    $wc = New-Object Net.WebClient; $wc.Headers.Add('User-Agent', 'LSM')
     $g = $wc.DownloadFileTaskAsync($s.Url, $yol)
     while (-not $g.IsCompleted) { Bekle 0.3 }
     if ($g.IsFaulted -or -not (Test-Path $yol)) { Yaz (T 'İndirme olmadı.' 'Download failed.') $RenkKirmizi; return }
@@ -2701,7 +2703,7 @@ Sampiyon-Yukle
 
 $PencereXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Riot Plus" Width="452" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Title="LSM" Width="452" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen" UseLayoutRounding="True"
         FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13" Foreground="#ECE5D8" TextOptions.TextFormattingMode="Display">
   <Window.Resources>
@@ -2894,7 +2896,7 @@ $PencereXaml = @'
           <Grid x:Name="BaslikCubugu" Height="38" VerticalAlignment="Top" Background="Transparent">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
               <Image x:Name="BaslikLogo" Width="16" Height="16"/>
-              <TextBlock Text="Riot Plus" Style="{StaticResource DarYazi}" FontSize="13.5" Foreground="White" Margin="8,0,0,1" VerticalAlignment="Center">
+              <TextBlock Text="LSM" ToolTip="LoL Skin Manager" Style="{StaticResource DarYazi}" FontSize="13.5" Foreground="White" Margin="8,0,0,1" VerticalAlignment="Center">
                 <TextBlock.Effect><DropShadowEffect Color="Black" BlurRadius="6" ShadowDepth="0" Opacity="0.7"/></TextBlock.Effect></TextBlock>
             </StackPanel>
             <!-- Başlık kontrolleri tek cam kapsülde (HIG Toolbars: ilgili öğeleri grupla); dil iki parçalı seçici -->
@@ -3041,7 +3043,7 @@ $PencereXaml = @'
         <!-- Custom sayfası: üstteki görsel sayfada seçili şampiyonun custom'ını gösterir; şampiyon şeridi + seçenek kartları -->
         <Border x:Name="CustomGorunum" Visibility="Hidden" Background="#141A22" AllowDrop="True" Height="{Binding ActualHeight, ElementName=AnaSayfa}">
           <DockPanel Margin="16,12,16,10">
-            <!-- Kaynak: custom'ı kim uygular. LTK Manager = kendi eklediğin modlar (Riot Plus yönetir); Rose = Rose yönetir -->
+            <!-- Kaynak: custom'ı kim uygular. LTK Manager = kendi eklediğin modlar (LSM yönetir); Rose = Rose yönetir -->
             <Border DockPanel.Dock="Top" Height="30" CornerRadius="15" Background="#1A212B" BorderBrush="#232B36" BorderThickness="1" Padding="2" Margin="0,0,0,10">
               <UniformGrid Rows="1">
                 <Border x:Name="KaynakLtk" CornerRadius="13" BorderThickness="1" Cursor="Hand" Tag="ltk">
@@ -3091,7 +3093,7 @@ $PencereXaml = @'
                   <ToggleButton x:Name="AnahtarRakip" Grid.Column="1" Style="{StaticResource Anahtar}" Tag="customRakip"/>
                 </Grid>
               </Border>
-              <!-- Riot Plus kapanınca LTK Manager da kapansın mı -->
+              <!-- LSM kapanınca LTK Manager da kapansın mı -->
               <Border Style="{StaticResource Grup}" Margin="0,0,0,8">
                 <Grid Margin="14,8,12,9">
                   <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -3327,7 +3329,7 @@ $BaslikCubugu.Add_MouseLeftButtonDown({ if ($_.ClickCount -eq 1) { try { $Pencer
 $KucultDugme.Add_Click({ $Pencere.WindowState = 'Minimized' })
 $KapatDugme.Add_Click({ $Pencere.Close() })
 Ipucu-Ver $KucultDugme 'Küçült; çalışmaya devam eder' 'Minimize; keeps working'
-Ipucu-Ver $KapatDugme "Riot Plus'ı kapat" 'Close Riot Plus'
+Ipucu-Ver $KapatDugme "LSM'yi kapat" 'Close LSM'
 # Dil yazıları başlık çubuğunun içinde: basış sürükleme başlatmasın diye olay burada tüketilir
 foreach ($d in $DilTRKutu, $DilENKutu) {
     $d.Background = Firca '#00FFFFFF'
@@ -3595,10 +3597,10 @@ function Kahraman-Guncelle {
         } else { $ad = T 'Şampiyon seçimi' 'Champ select'; $not = (T 'Seçim sürüyor.' 'Picking.') + $sonu }
     } elseif (@('GameStart', 'InProgress', 'Reconnect') -contains $faz) {
         if ($script:SonSampiyon) { $id = $script:SonSampiyon }
-        $ad = if ($id) { Sampiyon-Adi $id } else { 'Riot Plus' }
+        $ad = if ($id) { Sampiyon-Adi $id } else { 'LSM' }
         $not = if ($faz -eq 'Reconnect') { T "Maçtan düştün; 2'ye basıp yeniden bağlan." "You dropped out; press 2 to reconnect." } else { T 'Maçtasın. İyi oyunlar.' 'In game. Have a good one.' }
     } else {
-        $ad = if ($id) { Sampiyon-Adi $id } else { 'Riot Plus' }
+        $ad = if ($id) { Sampiyon-Adi $id } else { 'LSM' }
         $not = $v.Not
     }
     # Custom sayfası açıkken: sayfada seçili şampiyon ve onun custom'ı
@@ -4280,7 +4282,7 @@ function Kaynak-Boya {
     $CustomKaydir.Visibility = 'Visible'   # Rose kipinde Rose'daki custom'ların kartları (Custom-Liste-Olustur)
 }
 function Rose-Panel-Guncelle {
-    $RoseAciklama.Text = T "Skini şampiyon seçiminde LoL'ün içinden seçersin. Bu kipte Riot Plus LTK'ya dokunmaz. Aşağıdakiler Rose'daki custom'ların; onlar da LoL'de custom menüsünden seçilir." "Pick your skin in champ select, inside LoL. Riot Plus leaves LTK alone in this mode. Below are your customs in Rose; those are picked from the custom menu in LoL too."
+    $RoseAciklama.Text = T "Skini şampiyon seçiminde LoL'ün içinden seçersin. Bu kipte LSM LTK'ya dokunmaz. Aşağıdakiler Rose'daki custom'ların; onlar da LoL'de custom menüsünden seçilir." "Pick your skin in champ select, inside LoL. LSM leaves LTK alone in this mode. Below are your customs in Rose; those are picked from the custom menu in LoL too."
     $RoseAciklama.ToolTip = T "Rose oyunun kendi skinlerini açar ve LTK Manager'ı kendisi açıp kapatır. LTK sayfasındaki seçimlerin durur ama Rose her maçta onları kapatır; custom'ların Rose'da da gelsin diye 'LTK'dan aktar'ı kullan." "Rose unlocks the game's own skins and opens and closes LTK Manager itself. Your picks on the LTK page are kept, but Rose turns them off each game; use 'Copy from LTK' so your customs work in Rose too."
     $d = $script:RoseDurum
     $dugme = $null
@@ -4441,7 +4443,7 @@ function Kurulum-Ogeleri {
 }
 function Kurulum-Olustur {
     $KurulumListe.Children.Clear()
-    $KurulumAciklama.Text = T "Riot Plus'ın custom skin tarafı için gerekenler. Yeşil olan hazır; eksik olanı yanındaki düğmeyle kurabilirsin." 'What the custom skin side of Riot Plus needs. Green is ready; install anything missing with its button.'
+    $KurulumAciklama.Text = T "LSM'nin custom skin tarafı için gerekenler. Yeşil olan hazır; eksik olanı yanındaki düğmeyle kurabilirsin." 'What the custom skin side of LSM needs. Green is ready; install anything missing with its button.'
     $ogeler = Kurulum-Ogeleri
     $eksik = 0
     foreach ($o in $ogeler) {
@@ -4552,7 +4554,7 @@ $AnahtarCustom.Add_Click({
 # "Rakiplerde de görünsün": açıkken seçtiğin her custom o şampiyonu oynayan herkeste görünür (modlar oyun dosyasının yerine geçer).
 # Kapalıyken maçta yalnız senin şampiyonunun modu açık; diğer seçimler kayıtta durur, o şampiyona geçince açılır.
 Cevir $RakipYazi 'Rakiplerde de görünsün' 'Show on enemies too'
-Cevir $LtkKapatYazi 'Riot Plus kapanınca LTK de kapansın' 'Close LTK when Riot Plus closes'
+Cevir $LtkKapatYazi 'LSM kapanınca LTK de kapansın' 'Close LTK when LSM closes'
 Cevir $LtkKapatNot 'Maç sürüyorsa LTK kapatılmaz.' "LTK stays open if you're in a game."
 function Rakip-Not-Guncelle {
     $RakipNot.Text = if ($Ayar.customRakip) { T "Seçtiğin custom'lar o şampiyonu oynayan herkeste görünür." 'Your customs show on anyone playing that champion.' }
@@ -4573,7 +4575,7 @@ $AnahtarRakip.Add_Click({
 $AnahtarLtkKapat.IsChecked = [bool]$Ayar.ltkKapat
 $AnahtarLtkKapat.Add_Click({
     $Ayar.ltkKapat = [bool]$this.IsChecked; Ayar-Kaydet
-    Yaz $(if ($Ayar.ltkKapat) { T 'Riot Plus kapanınca LTK de kapanacak.' 'LTK will close with Riot Plus.' } else { T 'Riot Plus kapanınca LTK açık kalacak.' 'LTK will stay open after Riot Plus closes.' }) $RenkSoluk
+    Yaz $(if ($Ayar.ltkKapat) { T 'LSM kapanınca LTK de kapanacak.' 'LTK will close with LSM.' } else { T 'LSM kapanınca LTK açık kalacak.' 'LTK will stay open after LSM closes.' }) $RenkSoluk
 })
 $ModEkle.Add_Click({
     $d = New-Object Microsoft.Win32.OpenFileDialog
@@ -4617,7 +4619,7 @@ foreach ($k in $KaynakLtk, $KaynakRose) {
         Kart-Bas 'kaynak'
     })
 }
-Ipucu-Ver $KaynakLtk "Kendi eklediğin modlar (.fantome / .modpkg). Riot Plus hangi şampiyonda hangisinin açık olacağını LTK'ya yazar." "Mods you add yourself (.fantome / .modpkg). Riot Plus tells LTK which one is on for each champion."
+Ipucu-Ver $KaynakLtk "Kendi eklediğin modlar (.fantome / .modpkg). LSM hangi şampiyonda hangisinin açık olacağını LTK'ya yazar." "Mods you add yourself (.fantome / .modpkg). LSM tells LTK which one is on for each champion."
 Ipucu-Ver $KaynakRose "Rose: oyunun kendi skinleri, seçim LoL'ün içinden. İkisi aynı anda çalışmaz; ikisi de LTK Manager'ı kullanır." "Rose: the game's own skins, picked inside LoL. The two can't run together; both use LTK Manager."
 $RoseDugme.Add_Click({
     switch ("$($this.Tag)") {
@@ -4743,7 +4745,7 @@ function Hesap-Tick($lcu, $faz, $onceki) {
     if ($oyun -contains $faz) {
         if (-not $script:PoroMac) {
             $script:PoroMac = $true
-            # Yalnız maçın başladığını gördüysek (Riot Plus maç ortasında açıldıysa açılmaz); sayfa hazır olsun diye biraz beklenir
+            # Yalnız maçın başladığını gördüysek (LSM maç ortasında açıldıysa açılmaz); sayfa hazır olsun diye biraz beklenir
             if ($Ayar.poro -and $onceki -and ($oyun + 'Reconnect') -notcontains $onceki) { $script:PoroZaman = [DateTime]::Now.AddSeconds(15) }
         }
     } elseif ($faz -and $faz -ne 'Reconnect') { $script:PoroMac = $false }
