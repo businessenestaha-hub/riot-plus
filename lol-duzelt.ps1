@@ -2991,6 +2991,33 @@ try {
     $logo.BeginInit(); $logo.UriSource = New-Object Uri($LogoYolu); $logo.CacheOption = 'OnLoad'; $logo.EndInit()
     $BaslikLogo.Source = $logo; $MesajLogo.Source = $logo
 } catch {}
+# ---- Alt bilgi ----
+$script:AltVeri = [int[]](81, 34, 46, 52, 120, 61, 31, 77, 6, 30, 234, 232, 242, 254, 242, 204, 216, 214)
+$script:AltYazi = $null
+function Alt-Bilgi-Metni {
+    $s = New-Object Text.StringBuilder
+    for ($i = 0; $i -lt $script:AltVeri.Count; $i++) { [void]$s.Append([char]($script:AltVeri[$i] -bxor ((60 + 7 * $i) -band 255))) }
+    return $s.ToString()
+}
+function Alt-Bilgi {
+    $p = $MesajKutu.Parent
+    if (-not ($p -is [Windows.Controls.Panel])) { return }
+    $t = $script:AltYazi
+    if (-not $t -or -not $p.Children.Contains($t)) {
+        $t = New-Object Windows.Controls.TextBlock
+        $t.FontSize = 10.5; $t.HorizontalAlignment = 'Right'; $t.Margin = '0,-4,16,8'; $t.IsHitTestVisible = $false
+        [void]$p.Children.Add($t)
+        $script:AltYazi = $t
+    }
+    $m = Alt-Bilgi-Metni
+    if ($t.Text -ne $m) { $t.Text = $m }
+    if ($t.Visibility -ne 'Visible') { $t.Visibility = 'Visible' }
+    if ($t.Opacity -ne 1) { $t.Opacity = 1 }
+    if ($t.FontSize -lt 10) { $t.FontSize = 10.5 }
+    $t.Foreground = Firca '#66707C'
+}
+Alt-Bilgi
+
 # Köşeler yuvarlak kırpılır (WPF ClipToBounds köşe yarıçapını bilmez)
 $Kok.Add_SizeChanged({ $this.Clip = New-Object Windows.Media.RectangleGeometry((New-Object Windows.Rect(0, 0, $this.ActualWidth, $this.ActualHeight)), 12, 12) })
 
@@ -3428,6 +3455,7 @@ function Portre-Guncelle {
 
 function Gorunum-Guncelle {
     if ($script:Kapandi) { return }
+    try { Alt-Bilgi } catch {}
     Kahraman-Guncelle
     Eylem-Guncelle
     Rol-Yazisi-Guncelle
@@ -4294,6 +4322,7 @@ $Zamanlayici.Add_Tick({
     if ($SiraSinyali.WaitOne(0)) { $script:BekleyenIslem = $script:EylemIslem }
     try { Ping-Tick } catch {}
     try { Indirme-Tick } catch {}
+    if ($script:Tik % 5 -eq 0) { try { Alt-Bilgi } catch {} }
     try { Ltk-Surum-Tick } catch {}
     if ($script:Tik % 10800 -eq 0) { try { Ltk-Surum-Sor } catch {} }   # açık kaldıkça 3 saatte bir yeni LTK sorulur
     try { Skin-Adi-Tick } catch {}
