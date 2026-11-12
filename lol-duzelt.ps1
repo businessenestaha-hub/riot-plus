@@ -1718,13 +1718,50 @@ function Rose-Surumu-Uret($kaynak, $hedef) {
     } catch { return "$($_.Exception.Message)" }
     finally { foreach ($y in $gec, $hataDosya, $ciktiDosya) { Remove-Item -LiteralPath $y -Force -ErrorAction SilentlyContinue } }
 }
+# Rose'da yetim kalan kopyaları kaldırır: bizim aktardığımız (riotPlusLtkId taşıyan) ama o kimliği artık LTK kütüphanesinde
+# olmayan kayıtlar. Bir mod LTK'da kaldırılıp yeniden eklenince yeni kimlik alır; eski kopya eşleşmediği için Rose'da kalır
+# ve yenisi yanına "ad (2)" diye konurdu (12 Kas: Kayn'da görüldü). riotPlusLtkId taşımayan kayıtlara (Rose'un kendi
+# eklediklerine) dokunulmaz; okunamayan manifest yazılmaz. $gecerli: LTK'daki mod kimlikleri. Dönüş: kaldırılanların adları.
+function Rose-Yetim-Temizle([string]$kok, $gecerli) {
+    $silinen = New-Object Collections.ArrayList
+    foreach ($d in @(Get-ChildItem -LiteralPath $kok -Directory -ErrorAction SilentlyContinue)) {
+        $manYol = Join-Path $d.FullName 'rose_mod_targets.json'
+        if (-not (Test-Path -LiteralPath $manYol)) { continue }
+        $man = $null
+        try { $man = $script:Json.DeserializeObject([IO.File]::ReadAllText($manYol)) } catch { continue }
+        if (-not ($man -is [Collections.IDictionary])) { continue }
+        $modlar = $man['mods']
+        if (-not ($modlar -is [Collections.IDictionary])) { continue }
+        $dosyalar = New-Object Collections.ArrayList
+        foreach ($k in @($modlar.Keys)) {
+            $g = $modlar[$k]
+            if (-not ($g -is [Collections.IDictionary])) { continue }
+            $id = "$($g['riotPlusLtkId'])"
+            if (-not $id -or $gecerli[$id]) { continue }
+            $gAd = if ("$($g['name'])") { "$($g['name'])" } else { "$k" }
+            [void]$dosyalar.Add((Join-Path $d.FullName "$gAd.fantome")); [void]$dosyalar.Add((Join-Path $d.FullName "$gAd.png"))
+            [void]$silinen.Add($(if ("$($g['displayName'])") { "$($g['displayName'])" } else { $gAd }))
+            [void]$modlar.Remove($k)
+        }
+        if (-not $dosyalar.Count) { continue }
+        # Önce manifest, sonra dosyalar: manifest yazılamazsa hiçbir şey silinmez
+        try { Json-Yaz $manYol $man } catch { continue }
+        foreach ($y in $dosyalar) { Remove-Item -LiteralPath $y -Force -ErrorAction SilentlyContinue }
+    }
+    return ,[string[]]@($silinen)   # tek nesne olarak döner (boşsa boş dizi)
+}
 function Rose-Aktar {
     if (-not (Rose-Kurulu)) { Yaz (T 'Rose kurulu değil.' 'Rose is not installed.') $RenkTuruncu; return }
     if (Rose-Mesgul-Faz) { Yaz (T 'Seçimde ya da maçtayken aktarılmaz; maç bitince dene.' 'Not during champ select or a game; try after.') $RenkTuruncu; return }
     try { Ltk-Oku -Zorla } catch {}
-    if (-not $script:LtkKutuphane -or -not $script:LtkKutuphane.Modlar.Count) { Yaz (T "LTK'da aktarılacak mod yok." 'No mods in LTK to copy.') $RenkSoluk; return }
+    # Kütüphane okunamadıysa hiçbir şeye dokunulmaz (yetim temizliği her şeyi silerdi); okundu ama boşsa temizlik yine yapılır
+    if (-not $script:LtkKutuphane) { Yaz (T "LTK kütüphanesini okuyamadım; aktarmadım." "Couldn't read the LTK library; nothing copied.") $RenkTuruncu; return }
     if ($Deneme) { Yaz "deneme: $($script:LtkKutuphane.Modlar.Count) mod Rose'a aktarılmadı" $RenkSoluk; return }
     $kok = Join-Path $RoseVeri 'mods\skins'; $ltkMod = Join-Path $LtkVeri 'mods'
+    $gecerli = @{}; foreach ($m in @($script:LtkKutuphane.Modlar)) { $gecerli["$($m.Id)"] = $true }
+    $yetim = Rose-Yetim-Temizle $kok $gecerli    # not: @( ) ile sarmalanmaz; dönen dizi tek öğe sayılırdı
+    if ($yetim -and $yetim.Count) { Yaz ((T "Rose'dan kaldırıldı (LTK'da artık yok, $($yetim.Count)): " "Removed from Rose (no longer in LTK, $($yetim.Count)): ") + ($yetim -join ', ')) $RenkSoluk }
+    if (-not $script:LtkKutuphane.Modlar.Count) { Yaz (T "LTK'da aktarılacak mod yok." 'No mods in LTK to copy.') $RenkSoluk; Custom-Yenile; return }
     $eklendi = @(); $vardi = 0; $paket = @(); $sampiyonsuz = 0; $hata = @(); $sinirli = @(); $uretimNot = ''
     foreach ($m in @($script:LtkKutuphane.Modlar)) {
         if ($m.Engelli) { continue }
@@ -1734,6 +1771,9 @@ function Rose-Aktar {
         $gecici = $null
         try {
             if (-not (Test-Path -LiteralPath $kaynak)) { throw 'dosya yok' }
+            # Modun LTK'daki dosyasının O ANKİ özeti. $m.Sha (library.json'daki sourceSha256) modun LTK'ya ilk eklendiği
+            # andaki özettir; dosya LTK klasöründe aynı adla değiştirilince değişmez ve güncelleme atlanırdı (12 Kas).
+            $kaynakOzet = [string](Get-FileHash -LiteralPath $kaynak -Algorithm SHA256).Hash.ToLowerInvariant()
             # Klasik skine yazmayan mod: Rose sürümü varsa (ya da üretilebiliyorsa) o aktarılır ve klasik skini hedefler.
             # Hazır sürüm modun LTK'daki dosyasından eskiyse (mod sonradan güncellendi) kullanılmaz.
             $bicim = 'ayni'; $kaynakDosya = $kaynak
@@ -1743,10 +1783,19 @@ function Rose-Aktar {
                 # Elle konan hazır sürüm "<slug>-rose.fantome" adıyla da olabilir; daha yeniyse o kullanılır
                 $elle = Join-Path $RoseSurumKlasoru "$($m.Slug)-rose.fantome"
                 if ((Test-Path -LiteralPath $elle) -and (-not (Test-Path -LiteralPath $hazir) -or (Get-Item -LiteralPath $elle).LastWriteTimeUtc -gt (Get-Item -LiteralPath $hazir).LastWriteTimeUtc)) { $hazir = $elle }
-                $guncel = (Test-Path -LiteralPath $hazir) -and ((Get-Item -LiteralPath $hazir).LastWriteTimeUtc -ge (Get-Item -LiteralPath $kaynak).LastWriteTimeUtc)
+                $tarihce = (Test-Path -LiteralPath $hazir) -and ((Get-Item -LiteralPath $hazir).LastWriteTimeUtc -ge (Get-Item -LiteralPath $kaynak).LastWriteTimeUtc)
+                # Bizim ürettiğimiz sürümün yanında hangi kaynaktan üretildiği yazar (<dosya>.ozet); kaynak değiştiyse yeniden
+                # üretilir (dosya tarihi yanıltabilir: yerinde değiştirilen modun tarihi eski olabilir). Elle konan sürümde
+                # (-rose) özet dosyası yoktur, tarihine bakılır.
+                $ozetYol = "$hazir.ozet"
+                $ozetTutuyor = (Test-Path -LiteralPath $hazir) -and (Test-Path -LiteralPath $ozetYol) -and (("$([IO.File]::ReadAllText($ozetYol))").Trim() -eq $kaynakOzet)
+                $guncel = if ($hazir -eq $elle) { $tarihce } else { $ozetTutuyor }
                 if (-not $guncel) {
-                    $u = Rose-Surumu-Uret $kaynak $hazir
-                    if ($u -eq 'tamam') { $guncel = $true } elseif ($u -eq 'gereksiz') { $klasikYazar = $true } else { $uretimNot = [string]$u }
+                    $uretilen = Join-Path $RoseSurumKlasoru "$($m.Slug).fantome"
+                    $u = Rose-Surumu-Uret $kaynak $uretilen
+                    if ($u -eq 'tamam') { $hazir = $uretilen; [IO.File]::WriteAllText("$uretilen.ozet", $kaynakOzet); $guncel = $true }
+                    elseif ($u -eq 'gereksiz') { $klasikYazar = $true }
+                    else { $uretimNot = [string]$u; if ($tarihce) { $guncel = $true } }   # üretilemedi (Python yok): tarihi uygun eldeki sürümle yetin
                 }
                 if ($guncel) { $kaynakDosya = $hazir; $bicim = 'klasik' } elseif (-not $klasikYazar) { $sinirli += [string]$m.Ad }
             }
@@ -1769,7 +1818,7 @@ function Rose-Aktar {
                     $gDosya = Join-Path $klasor "$gAd.fantome"
                     $gBicim = if ("$($g['riotPlusBicim'])") { "$($g['riotPlusBicim'])" } else { 'ayni' }
                     $gKaynak = "$($g['riotPlusKaynak'])"
-                    if ((Test-Path -LiteralPath $gDosya) -and $gBicim -eq $bicim -and (-not $gKaynak -or $gKaynak -eq "$($m.Sha)")) { $var = $true }
+                    if ((Test-Path -LiteralPath $gDosya) -and $gBicim -eq $bicim -and $gKaynak -eq $kaynakOzet) { $var = $true }
                     else {
                         # Eski aktarma (öteki biçimde ya da modun önceki hali): dosyası ve kaydı kaldırılır, yenisi konur
                         Remove-Item -LiteralPath $gDosya -Force -ErrorAction SilentlyContinue
@@ -1819,7 +1868,7 @@ function Rose-Aktar {
             $girdi['sourceHash'] = $ozet
             $girdi['riotPlusLtkId'] = [string]$m.Id
             $girdi['riotPlusBicim'] = [string]$bicim
-            $girdi['riotPlusKaynak'] = [string]$m.Sha
+            $girdi['riotPlusKaynak'] = [string]$kaynakOzet
             $modlar[[string]$ad] = $girdi
             $man['version'] = [int]1
             if (-not $man.ContainsKey('championId')) { $man['championId'] = [int]$m.Ana }
