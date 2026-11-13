@@ -118,7 +118,7 @@ $GorselKlasoru   = Join-Path $PSScriptRoot 'gorsel'
 $CustomGorselKlasoru = Join-Path $GorselKlasoru 'custom'                 # modların görselleri + elle seçilenler
 $SkinAdDosyasi   = Join-Path $PSScriptRoot 'sampiyon-skinleri.json'      # Data Dragon skin adları (num -> ad)
 $ModSkinDosyasi  = Join-Path $CustomGorselKlasoru 'mod-skinleri.json'    # mod sha|şampiyon -> yazdığı skin numaraları
-$IkonYolu        = Join-Path $PSScriptRoot 'riot-plus.ico'   # Riot logosunun yeşil hali
+$IkonYolu        = Join-Path $PSScriptRoot 'riot-plus.ico'   # koyu zeminde yeşil kesme taş (13 Kas 2026; dosya adı eskisi gibi, kısayollar bozulmasın)
 $LogoYolu        = Join-Path $PSScriptRoot 'riot-plus.png'
 $RcLockfile      = Join-Path $env:LOCALAPPDATA 'Riot Games\Riot Client\Config\lockfile'
 $Roller   = [ordered]@{ top = 'Üst'; jungle = 'Orman'; middle = 'Orta'; bottom = 'Alt'; utility = 'Destek'; genel = 'Rolsüz' }
