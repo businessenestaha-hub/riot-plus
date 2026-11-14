@@ -94,20 +94,33 @@ if (-not (Test-Path -LiteralPath $RiotClient)) {
         }
     } catch {}
 }
-if (-not (Test-Path -LiteralPath (Join-Path $LolKlasoru 'LeagueClient.exe'))) {
+# Not (14 Kas 2026): yol birleştirirken Join-Path kullanılmaz. Join-Path, sürücü bilgisayarda yoksa (yukarıdaki D: gibi)
+# hata verip boş döner; ardından gelen Test-Path de boş yol yüzünden hata verir ve bu blok hiç çalışmadan atlanırdı.
+# Bir arkadaşın bilgisayarında (LoL C:'de, D: yok) LoL bu yüzden bulunamadı ve Kurulum sayfası boş kaldı.
+function Yol([string]$a, [string]$b) { [IO.Path]::Combine($a, $b) }
+function Lol-Var([string]$k) { [bool]$k -and (Test-Path -LiteralPath (Yol $k 'LeagueClient.exe')) }
+if (-not (Lol-Var $LolKlasoru)) {
+    $adaylar = New-Object Collections.ArrayList
     try {
         $ys = [IO.File]::ReadAllText((Join-Path $env:ProgramData 'Riot Games\Metadata\league_of_legends.live\league_of_legends.live.product_settings.yaml'))
-        if ($ys -match '(?m)^\s*product_install_full_path:\s*"?([^"\r\n]+)"?') {
-            $aday = $Matches[1].Trim().Replace('\\', '\').Replace('/', '\')
-            if (Test-Path -LiteralPath (Join-Path $aday 'LeagueClient.exe')) { $LolKlasoru = $aday }
-        }
+        if ($ys -match '(?m)^\s*product_install_full_path:\s*"?([^"\r\n]+)"?') { [void]$adaylar.Add($Matches[1]) }
     } catch {}
+    try {
+        # RiotClientInstalls.json: "associated_client": { "<LoL klasörü>": "<Riot Client yolu>" }
+        $rj = [IO.File]::ReadAllText((Join-Path $env:ProgramData 'Riot Games\RiotClientInstalls.json')) | ConvertFrom-Json
+        if ($rj.associated_client) { foreach ($ozellik in $rj.associated_client.PSObject.Properties) { [void]$adaylar.Add([string]$ozellik.Name) } }
+    } catch {}
+    foreach ($harf in 'C', 'D', 'E', 'F', 'G') { [void]$adaylar.Add("${harf}:\Riot Games\League of Legends") }
+    foreach ($aday in $adaylar) {
+        $y = "$aday".Trim().Replace('\\', '\').Replace('/', '\').TrimEnd('\')
+        if (Lol-Var $y) { $LolKlasoru = $y; break }
+    }
 }
 if (-not (Test-Path -LiteralPath $LtkExe)) {
     $aday = Join-Path $env:LOCALAPPDATA 'LTK Manager\ltk-manager.exe'   # kullanıcıya özel kurulum
     if (Test-Path -LiteralPath $aday) { $LtkExe = $aday }
 }
-$GameLogs = Join-Path $LolKlasoru 'Logs\GameLogs'
+$GameLogs = Yol $LolKlasoru 'Logs\GameLogs'
 $Deneme = [bool]$DenemeKlasoru
 if ($Deneme) { $LolKlasoru = $DenemeKlasoru }
 $VeriKlasoru     = if ($Deneme) { $DenemeKlasoru } else { $PSScriptRoot }
@@ -443,7 +456,18 @@ function Kilit-Oku($yol) {
         return @{ Port = $parca[2]; Sifre = $parca[3]; Protokol = $protokol }
     } catch { return $null }
 }
-function Lcu-Bilgi { Kilit-Oku (Join-Path $LolKlasoru 'lockfile') }
+function Lcu-Bilgi {
+    $y = Yol $LolKlasoru 'lockfile'
+    if (-not $Deneme -and -not (Test-Path -LiteralPath $y)) {
+        # Kurulum yolu bulunamadıysa çalışan client'ın kendi klasöründen öğrenilir
+        try {
+            $p = Get-Process -Name 'LeagueClientUx' -ErrorAction SilentlyContinue | Select-Object -First 1
+            $d = if ($p -and $p.Path) { Split-Path -Parent $p.Path } else { $null }
+            if ($d -and (Test-Path -LiteralPath (Yol $d 'lockfile'))) { $script:LolKlasoru = $d; $script:GameLogs = Yol $d 'Logs\GameLogs'; $y = Yol $d 'lockfile' }
+        } catch {}
+    }
+    Kilit-Oku $y
+}
 function Rc-Bilgi { if ($Deneme) { return $null }; Kilit-Oku $RcLockfile }
 
 # HTTP isteği; @{ Kod; Govde } döner (bağlanamazsa Kod = 000)
@@ -4472,9 +4496,9 @@ function Custom-Liste-Olustur {
 # Custom skinler için gerekenlerin durumu. Her öğe: @{ Ad; Tamam; Durum; Dugme; Islem }
 function Kurulum-Ogeleri {
     $o = New-Object Collections.ArrayList
-    $lol = Test-Path -LiteralPath (Join-Path $LolKlasoru 'LeagueClient.exe')
+    $lol = Lol-Var $LolKlasoru
     [void]$o.Add(@{ Ad = 'League of Legends'; Tamam = ($lol -or $Deneme); Gerekli = $true
-        Durum = $(if ($lol -or $Deneme) { T "Bulundu: $LolKlasoru" "Found: $LolKlasoru" } else { T "Bulamadım. Kuruluysa lol-duzelt.ps1'in başındaki `$LolKlasoru satırına yolunu yaz." "Not found. If it is installed, put its path in the `$LolKlasoru line at the top of lol-duzelt.ps1." }) })
+        Durum = $(if ($lol -or $Deneme) { T "Bulundu: $LolKlasoru" "Found: $LolKlasoru" } else { T "Kurulum klasörünü bulamadım. LoL'ü bir kez açarsan yerini kendim öğrenirim." "Couldn't find the install folder. Open LoL once and I'll learn where it is." }) })
     $ltk = Ltk-Kurulu; $surum = Ltk-Surum; $son = $script:LtkSon
     $yeni = [bool]($ltk -and $son -and $surum -and $son.Surum -gt $surum)
     [void]$o.Add(@{ Ad = 'LTK Manager'; Tamam = $ltk; Gerekli = $true
@@ -4491,6 +4515,15 @@ function Kurulum-Ogeleri {
     return ,$o
 }
 function Kurulum-Olustur {
+    try { Kurulum-Olustur-Ic }
+    catch {
+        # Sayfa boş kalmasın: ne olduğu yazılır (14 Kas: bir hata yüzünden liste boş, düğme yazısız kalmıştı)
+        $KurulumHepsi.Visibility = 'Collapsed'
+        $KurulumNot.Text = (T 'Durumu okurken hata oldu: ' 'Error while reading the status: ') + $_.Exception.Message
+        Yaz ((T 'Kurulum sayfası: ' 'Setup page: ') + $_.Exception.Message) $RenkTuruncu
+    }
+}
+function Kurulum-Olustur-Ic {
     $KurulumListe.Children.Clear()
     $KurulumAciklama.Text = T "LSM'nin custom skin tarafı için gerekenler. Yeşil olan hazır; eksik olanı yanındaki düğmeyle kurabilirsin." 'What the custom skin side of LSM needs. Green is ready; install anything missing with its button.'
     $ogeler = Kurulum-Ogeleri
