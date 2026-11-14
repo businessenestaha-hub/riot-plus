@@ -28,3 +28,6 @@ rose-surumleri/
 
 # Client rol ikonları (uygulama ilk açılışta indirir)
 gorsel/rol/
+
+# Kişisel ayarlar (ban / pick listeleri, custom seçimleri): her bilgisayarda uygulama kendisi oluşturur
+/ayarlar.json
