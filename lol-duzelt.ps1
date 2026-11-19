@@ -24,6 +24,8 @@
 #   ekleme, rose_surumu.py) kaldırıldı: LTK o paketi reddediyor. Eski "Rose sürümü" kayıtları ilk aktarmada yenisiyle değişir.
 #   19 Kas: efektlerini tabloyla bağlayan modlar için "yerinde" sürüm (rose_yerinde.py, Python ister): modun efektleri oyunun
 #   okuduğu dosyalara özgün adlarıyla yazılır, Rose'da da gelir. Paylaşılan dosya değişirse öteki kostümler de etkilenir (bildirilir).
+#   20 Kas: role göre ban (Rol listeleri sayfasında "Role göre ban" kipi; gelen rolün banları, sonra genel liste). Rose sayfasındaki
+#   "LTK'dan aktar" bağlantısı "Rose'a aktar" düğmesi oldu. Hesap satırında Riot ID tıklanınca / "Kopyala" ile panoya kopyalanır.
 # Arayüz Türkçe / İngilizce: başlıktaki TR / EN (ayarlar.json "dil").
 #  Sorun mu var?  1 Ekrana gelmiyor   : yalnız client arayüzünü yeniden başlatır (giriş ve parti korunur)
 #                 2 Yüklemede kaldı   : maç başladı mı bakar; oyun penceresini tazeler ya da yeniden bağlar
@@ -883,6 +885,9 @@ function Ayar-Yukle {
                      # poro: maç başlayınca Porofessor'da canlı maç sayfası açılsın mı
                      poro = $false }
     foreach ($r in $Roller.Keys) { $a.pickListe[$r] = [int[]](0, 0, 0) }
+    # banRol: role göre ban listesi (rol -> 3 şampiyon). O rol gelince önce bu, sonra genel banListe denenir (Ban-Listesi).
+    $a.banRol = [ordered]@{}
+    foreach ($r in $Roller.Keys) { if ($r -ne 'genel') { $a.banRol[$r] = [int[]](0, 0, 0) } }
     try {
         $j = [IO.File]::ReadAllText($AyarDosyasi) | ConvertFrom-Json
         if ("$($j.dil)" -eq 'en') { $a.dil = 'en' }
@@ -892,6 +897,7 @@ function Ayar-Yukle {
         if ($null -ne $j.bekleSn) { $a.bekleSn = [Math]::Max(0, [Math]::Min(25, [int]$j.bekleSn)) }
         if ($j.banListe) { $a.banListe = Liste3 $j.banListe }
         foreach ($r in $Roller.Keys) { if ($j.pickListe.$r) { $a.pickListe[$r] = Liste3 $j.pickListe.$r } }
+        foreach ($r in @($a.banRol.Keys)) { if ($j.banRol.$r) { $a.banRol[$r] = Liste3 $j.banRol.$r } }
         if ($null -ne $j.sira -and $SiraIdleri -contains [int]$j.sira) { $a.sira = [int]$j.sira }
         $r1 = "$($j.rol1)".ToUpperInvariant(); if ($Rol1Kodlar -contains $r1) { $a.rol1 = $r1 }
         $r2 = "$($j.rol2)".ToUpperInvariant(); if ($Rol2Kodlar -contains $r2) { $a.rol2 = $r2 }
@@ -1133,7 +1139,7 @@ function Oto-Secim($lcu) {
     Onay-Kontrol $tumu
     $pickListe = @($Ayar.pickListe[$rol])
     if ($rol -ne 'genel') { $pickListe += @($Ayar.pickListe['genel']) }
-    $b = @{ S = $s; Alinan = $alinan; Niyet = $niyet; Pick = $pickListe }
+    $b = @{ S = $s; Alinan = $alinan; Niyet = $niyet; Pick = $pickListe; Ban = (Ban-Listesi $rol) }
 
     # Planlama (niyet) aşamasında ban aksiyonu "isInProgress" görünür ama client seçimi de kilidi de yok sayar
     # (5 Kas 2026 gerçek maç logu: 12 sn'lik PLANNING'de 4 deneme boşa gitti). Bu aşamada yalnız pick niyeti gösterilir.
@@ -1186,7 +1192,7 @@ function Oto-Aksiyon($lcu, $a, $tur, $b) {
     $kalanMs = [double]$b.S.timer.adjustedTimeLeftInPhase
     if (([DateTime]::Now - $sec.Ilk[$id]).TotalSeconds -lt $Ayar.bekleSn -and ($kalanMs -le 0 -or $kalanMs -gt 5000)) { return }
 
-    if ($tur -eq 'ban') { $liste = $Ayar.banListe; $haric = $b.Niyet; $izinli = $null }
+    if ($tur -eq 'ban') { $liste = $b.Ban; $haric = $b.Niyet; $izinli = $null }
     else { $liste = $b.Pick; $haric = @{}; $izinli = $sec.Secilebilir }
     # Sen kendin bir şampiyonun üzerine geldiysen (benim gösterdiğim değilse) onu kullanır
     $simdiki = [int]$a.championId
@@ -3131,7 +3137,7 @@ $PencereXaml = @'
             <StackPanel>
               <Grid x:Name="DuzenleTablo">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="60"/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/><RowDefinition Height="34"/></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="31"/><RowDefinition Height="31"/><RowDefinition Height="31"/><RowDefinition Height="31"/><RowDefinition Height="31"/><RowDefinition Height="31"/><RowDefinition Height="31"/></Grid.RowDefinitions>
               </Grid>
               <Grid Margin="0,8,0,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -3182,7 +3188,7 @@ $PencereXaml = @'
                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <TextBlock x:Name="RoseModBaslik" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                  <TextBlock x:Name="RoseAktarBag" Style="{StaticResource Baglanti}" Foreground="#1FBF62" FontSize="12.5" Margin="0,0,14,0"/>
+                  <Button x:Name="RoseAktarBag" Style="{StaticResource Kucuk}" Margin="0,0,12,0"/>
                   <TextBlock x:Name="RoseKlasorBag" Style="{StaticResource Baglanti}" Foreground="#1FBF62" FontSize="12.5"/>
                 </StackPanel>
               </Grid>
@@ -3672,6 +3678,13 @@ function Rol-Listesi($rol) {
     if (-not @($l | Where-Object { $_ -gt 0 }).Count -and $rol -ne 'genel') { $l = @($Ayar.pickListe['genel']) }
     return ,$l
 }
+# Ban sırası: gelen rolün ban listesi, ardından genel ban listesi (rol listesi boşsa ya da hepsi alınmışsa genel kullanılır)
+function Ban-Listesi($rol) {
+    $l = @()
+    if ($rol -and $Ayar.banRol -and $Ayar.banRol.Contains("$rol")) { foreach ($id in @($Ayar.banRol["$rol"])) { if ([int]$id -gt 0 -and $l -notcontains [int]$id) { $l += [int]$id } } }
+    foreach ($id in @($Ayar.banListe)) { if ([int]$id -gt 0 -and $l -notcontains [int]$id) { $l += [int]$id } }
+    return ,$l
+}
 function Varsayilan-Sampiyon {
     $rol = Aktif-Rol
     $id = @($Ayar.pickListe[$rol]) | Where-Object { $_ -gt 0 } | Select-Object -First 1
@@ -3847,8 +3860,9 @@ function Portre-Guncelle {
     $rol = Aktif-Rol
     $OynaRol.Text = Rol-Adi $rol
     $pick = Rol-Listesi $rol
+    $banG = @(Ban-Listesi $rol)     # gelen role göre: önce rolün banları, sonra genel
     for ($i = 0; $i -lt 3; $i++) {
-        $bid = [int]$Ayar.banListe[$i]
+        $bid = if ($i -lt $banG.Count) { [int]$banG[$i] } else { 0 }
         Portre-Ayarla $script:BanSlot[$i] $bid $(if ($b -and $bid -gt 0 -and $b.Banli[$bid]) { 'banli' } else { '' })
         $pid_ = [int]$pick[$i]
         $hal = if (-not $b -or $pid_ -le 0) { '' } elseif ($b.Benim -eq $pid_) { 'secili' } elseif ($b.Banli[$pid_]) { 'banli' } elseif ($b.Alinan[$pid_]) { 'alindi' } else { '' }
@@ -3865,9 +3879,18 @@ function Hesap-Guncelle {
         $script:HesapAnahtar = $anahtar
         $HesapYazi.Inlines.Clear()
         if ($h) {
-            $ad = New-Object Windows.Documents.Run((Hesap-Adi))
-            $ad.Foreground = Firca $RenkYazi; $ad.FontWeight = 'SemiBold'
+            # Ad tıklanınca (ya da yanındaki "Kopyala" ile) Riot ID panoya kopyalanır (20 Kas)
+            $ad = New-Object Windows.Documents.Hyperlink((New-Object Windows.Documents.Run((Hesap-Adi))))
+            $ad.Foreground = Firca $RenkYazi; $ad.FontWeight = 'SemiBold'; $ad.TextDecorations = $null; $ad.Cursor = 'Hand'; $ad.Focusable = $false
+            $ad.ToolTip = T 'Kopyalamak için tıkla' 'Click to copy'
+            $ad.Add_Click({ Hesap-Kopyala })
             $HesapYazi.Inlines.Add($ad)
+            $HesapYazi.Inlines.Add((New-Object Windows.Documents.Run('  ·  ')))
+            $kop = New-Object Windows.Documents.Hyperlink((New-Object Windows.Documents.Run((T 'Kopyala' 'Copy'))))
+            $kop.Foreground = Firca $RenkYesil; $kop.TextDecorations = $null; $kop.Cursor = 'Hand'; $kop.Focusable = $false
+            $kop.ToolTip = T 'Riot ID (ad#etiket) panoya kopyalanır' 'Copies your Riot ID (name#tag) to the clipboard'
+            $kop.Add_Click({ Hesap-Kopyala })
+            $HesapYazi.Inlines.Add($kop)
             $siteler = @(
                 @('poro', 'Porofessor', (T 'Canlı maç: maçtaki oyuncular, kazanma oranları (maçtayken dolu gelir)' 'Live game: players in your game and their win rates (filled while in game)')),
                 @('log', 'League of Graphs', (T 'Profilin: lig, maç geçmişi, şampiyon istatistikleri' 'Your profile: rank, match history, champion stats')))
@@ -3921,7 +3944,7 @@ $AnahtarPoro.Add_Click({
 Cevir $BanAd 'Banla' 'Ban'
 Cevir $OynaAd 'Oyna' 'Play'
 Ipucu-Ver $AnahtarKabul 'Maç bulununca otomatik kabul' 'Auto-accept when a match is found'
-Ipucu-Ver $AnahtarBan 'Sıran gelince listedeki ilk uygun şampiyonu banlar; arkadaşının seçeceğini banlamaz' "Bans the first available champion on your turn; never a teammate's pick"
+Ipucu-Ver $AnahtarBan 'Sıran gelince gelen rolünün ban listesindeki (yoksa genel listedeki) ilk uygun şampiyonu banlar; arkadaşının seçeceğini banlamaz' "Bans the first available champion from your role's ban list (or the general one) on your turn; never a teammate's pick"
 Ipucu-Ver $AnahtarPick 'Rolüne göre listedeki ilk uygun şampiyonu seçer' 'Picks the first available champion for your role'
 foreach ($k in $AnahtarKabul, $AnahtarBan, $AnahtarPick, $AnahtarKilitle) {
     $k.IsChecked = [bool]$Ayar[$k.Tag]
@@ -4100,9 +4123,48 @@ foreach ($r in @('ban') + @($Roller.Keys)) {
     }
     $satirNo++
 }
+# Tablo iki kipte çalışır: pick listeleri (varsayılan) ya da role göre ban listeleri (20 Kas). Kip değişince rol satırları
+# öteki listeyi gösterir; en üstteki Ban satırı iki kipte de genel ban listesidir. Ban kipinde Rolsüz satırı kullanılmaz
+# (rolsüzün banı zaten genel listedir).
+$script:TabloBan = $false
+$script:KipYazilar = @{}
+$TabloKip = New-Object Windows.Controls.StackPanel
+$TabloKip.Orientation = 'Horizontal'; $TabloKip.Margin = '0,0,0,6'
+foreach ($k in 'pick', 'ban') {
+    $y = New-Object Windows.Controls.TextBlock
+    $y.Style = $Pencere.FindResource('Baglanti'); $y.FontSize = 12.5; $y.Margin = '0,0,16,0'; $y.Tag = $k
+    if ($k -eq 'pick') { Cevir $y 'Pick listeleri' 'Pick lists' } else { Cevir $y 'Role göre ban' 'Bans by role' }
+    $y.Add_MouseLeftButtonUp({ if (Basildi $this) { Tablo-Kip ("$($this.Tag)" -eq 'ban') } })
+    [void]$TabloKip.Children.Add($y); $script:KipYazilar[$k] = $y
+}
+$DuzenleTablo.Parent.Children.Insert(0, $TabloKip)
+Ipucu-Ver $script:KipYazilar['ban'] 'Hangi rol gelirse o rolün banları atılır; liste boşsa ya da hepsi alınmışsa en üstteki genel Ban satırı kullanılır.' "Bans for the role you get; falls back to the general Ban row on top when the list is empty or taken."
+function Tablo-Kip([bool]$ban) {
+    $script:TabloBan = $ban
+    foreach ($k in 'pick', 'ban') {
+        $secili = ($k -eq 'ban') -eq $ban
+        $script:KipYazilar[$k].Foreground = Firca $(if ($secili) { $RenkYazi } else { $RenkSoluk })
+        $script:KipYazilar[$k].FontWeight = if ($secili) { 'SemiBold' } else { 'Normal' }
+    }
+    # Kutular yeni kipin listesinden doldurulur; bu sırada yazı değişimi kayıt sayılmaz
+    $onceki = $script:Yukleniyor; $script:Yukleniyor = $true
+    try {
+        foreach ($c in $script:Seciciler) {
+            $kullanilmaz = $ban -and ("$($c.Tag)".Split(':')[0] -eq 'genel')
+            $c.IsEnabled = -not $kullanilmaz; $c.Opacity = if ($kullanilmaz) { 0.35 } else { 1 }
+            $id = Secici-Id $c
+            $c.Text = if ($id -gt 0) { Sampiyon-Adi $id } else { '' }
+            $c.Foreground = Firca $RenkYazi
+            Secici-Ikon $c $id
+        }
+    } finally { $script:Yukleniyor = $onceki }
+    if ($ban) { Ceviri-Degistir $DuzenleNot 'Gelen role göre ban: önce o rolün satırı, sonra en üstteki genel Ban satırı denenir. Arkadaşının seçeceği banlanmaz.' "Bans by the role you get: that role's row first, then the general Ban row on top. Never bans a teammate's pick." }
+    else { Ceviri-Degistir $DuzenleNot 'Soldan sağa dener; alınmışsa ya da sende yoksa sıradakine geçer. Rolsüz listesi kör seçimde ve rol listesi tükenince kullanılır.' "Tries left to right; skips taken or unowned champions. The any-role list is used in blind pick and when a role list runs out." }
+}
 function Secici-Id($c) {
     $p = "$($c.Tag)".Split(':'); $liste = $p[0]; $sira = [int]$p[1]
     if ($liste -eq 'ban') { return [int]$Ayar.banListe[$sira] }
+    if ($script:TabloBan) { if ($liste -eq 'genel') { return 0 }; return [int]$Ayar.banRol[$liste][$sira] }
     return [int]$Ayar.pickListe[$liste][$sira]
 }
 function Secici-Ikon($c, $id) {
@@ -4126,7 +4188,9 @@ function Secici-Degisti($c, $cikis) {
     Secici-Ikon $c $id
     $p = "$($c.Tag)".Split(':'); $liste = $p[0]; $sira = [int]$p[1]
     # Doğrudan atama: "$x = if (...) { dizi }" diziyi kopyalar, değişiklik ayara yansımazdı
-    if ($liste -eq 'ban') { $hedef = $Ayar.banListe } else { $hedef = $Ayar.pickListe[$liste] }
+    if ($liste -eq 'ban') { $hedef = $Ayar.banListe }
+    elseif ($script:TabloBan) { if ($liste -eq 'genel') { return }; $hedef = $Ayar.banRol[$liste] }
+    else { $hedef = $Ayar.pickListe[$liste] }
     if ($hedef[$sira] -ne $id) { $hedef[$sira] = $id; Ayar-Kaydet }
 }
 
@@ -4184,6 +4248,7 @@ foreach ($c in $script:Seciciler) {
     })
 }
 Oneri-Doldur
+Tablo-Kip $false
 
 # ---- Custom skinler: "Skin" satırı + görünüm ----
 Cevir $CustomAd 'Skin' 'Skin'
@@ -4714,11 +4779,11 @@ $CustomGorunum.Add_Drop({
 })
 $LtkAc.Add_Click({ if (Ltk-Kurulu) { Start-Process -FilePath $LtkExe } })
 Cevir $RoseAktar "Rose'a aktar" 'Copy to Rose'
-Cevir $RoseAktarBag "LTK'dan aktar" 'Copy from LTK'
+Cevir $RoseAktarBag "Rose'a aktar" 'Copy to Rose'
 Cevir $RoseKlasorBag 'Klasörü aç' 'Open folder'
-Ipucu-Ver $RoseAktarBag "LTK'daki modlarını Rose'a kopyalar (yenileri ve güncellenenleri). LTK'yı açmaz, kaynağı değiştirmez." "Copies your LTK mods to Rose (new and updated ones). Doesn't open LTK or switch the source."
+Ipucu-Ver $RoseAktarBag "LTK'daki modlarını Rose'a kopyalar (yenileri ve güncellenenleri). LTK'yı açmaz, kaynağı değiştirmez; Rose açıkken de çalışır." "Copies your LTK mods to Rose (new and updated ones). Doesn't open LTK or switch the source."
 Ipucu-Ver $RoseKlasorBag "Rose'un custom skin klasörü (şampiyon kimliği + 000 adlı klasörler)" "Rose's custom skin folder (folders named champion id + 000)"
-$RoseAktarBag.Add_MouseLeftButtonUp({ if (Basildi $this) { Kart-Bas 'roseaktar' } })
+$RoseAktarBag.Add_Click({ Kart-Bas 'roseaktar' })
 $RoseKlasorBag.Add_MouseLeftButtonUp({
     if (-not (Basildi $this)) { return }
     $y = Join-Path $RoseVeri 'mods\skins'
@@ -4835,6 +4900,12 @@ function Hesap-Oku($lcu) {
     return @{ Ad = $ad; Etiket = $etiket; Bolge = $bolge }
 }
 function Hesap-Adi { $h = $script:Hesap; if (-not $h) { return '' }; return "$($h.Ad)$(if ($h.Etiket) { '#' + $h.Etiket })" }
+function Hesap-Kopyala {
+    $ad = Hesap-Adi
+    if (-not $ad) { return }
+    try { [Windows.Clipboard]::SetText($ad); Yaz ((T 'Kopyalandı: ' 'Copied: ') + $ad) $RenkYesil }
+    catch { Yaz (T 'Kopyalayamadım; bir daha dene.' "Couldn't copy; try again.") $RenkTuruncu }
+}
 function Site-Ac([string]$site, [bool]$oto = $false) {
     $h = $script:Hesap
     if (-not $h) { Yaz (T 'Hesabı okuyamadım; LoL açık ve giriş yapılmış olmalı.' "Couldn't read the account; LoL must be open and logged in.") $RenkTuruncu; return }
@@ -5023,7 +5094,7 @@ if ($Sessiz) {
         # Resim alınırken görseller hazır olsun
         $Ayar.custom = $true   # yalnız resim için, kaydedilmez
         try { Ltk-Oku -Zorla } catch {}
-        $kullanilan = @($Ayar.banListe) + @($Ayar.pickListe.Values | ForEach-Object { $_ }) + 145 + @((Custom-Gruplar).Keys | Where-Object { $_ -ne 'diger' } | ForEach-Object { [int]$_ })
+        $kullanilan = @($Ayar.banListe) + @($Ayar.banRol.Values | ForEach-Object { $_ }) + @($Ayar.pickListe.Values | ForEach-Object { $_ }) + 145 + @((Custom-Gruplar).Keys | Where-Object { $_ -ne 'diger' } | ForEach-Object { [int]$_ })
         foreach ($id in ($kullanilan | Where-Object { $_ -gt 0 } | Select-Object -Unique)) { $kd = $script:SampiyonKod[[int]$id]; try { Gorsel-Hazirla 'ikon' $kd; Gorsel-Hazirla 'splash' $kd } catch {} }
         $script:GorselBellek = @{}; $script:KahramanKod = $null; foreach ($sl in $script:BanSlot + $script:OynaSlot) { $sl.Anahtar = '' }
         foreach ($c in $script:Seciciler) { Secici-Ikon $c (Secici-Id $c) }
