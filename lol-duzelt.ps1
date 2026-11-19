@@ -22,6 +22,8 @@
 #   "Maç" satırı açıksa maç başlayınca Porofessor canlı maç sayfası açılır. Rose sayfasında Rose'daki custom'ların listesi.
 #   19 Kas: "Rose'a aktar" modu olduğu gibi kopyalar ve yazdığı skini hedefler; "Rose sürümü" (moda klasik skin dosyası
 #   ekleme, rose_surumu.py) kaldırıldı: LTK o paketi reddediyor. Eski "Rose sürümü" kayıtları ilk aktarmada yenisiyle değişir.
+#   19 Kas: efektlerini tabloyla bağlayan modlar için "yerinde" sürüm (rose_yerinde.py, Python ister): modun efektleri oyunun
+#   okuduğu dosyalara özgün adlarıyla yazılır, Rose'da da gelir. Paylaşılan dosya değişirse öteki kostümler de etkilenir (bildirilir).
 # Arayüz Türkçe / İngilizce: başlıktaki TR / EN (ayarlar.json "dil").
 #  Sorun mu var?  1 Ekrana gelmiyor   : yalnız client arayüzünü yeniden başlatır (giriş ve parti korunur)
 #                 2 Yüklemede kaldı   : maç başladı mı bakar; oyun penceresini tazeler ya da yeniden bağlar
@@ -78,7 +80,7 @@ $RoseExe        = 'C:\Program Files\Rose\Rose.exe'
 $RoseVeri       = Join-Path $env:LOCALAPPDATA 'Rose'
 $RoseIndirUrl   = 'https://github.com/Alban1911/Rose/releases/latest'
 $RoseSurumUrl   = 'https://api.github.com/repos/Alban1911/Rose/releases/latest'
-# Python (yalnız modların Rose sürümünü üretmek için): python.org'un resmi kurulum dosyası, yalnız kullanıcıya kurulur
+# Python (yalnız modların Rose'da efektleriyle çalışan "yerinde" sürümünü üretmek için): python.org'un resmi kurulum dosyası, yalnız kullanıcıya kurulur
 $PythonKurUrl   = 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe'
 $PythonImzaci   = 'CN=Python Software Foundation'
 $RoseAcilisSn   = 25                 # Rose başlatıldıktan sonra sürecinin görünmesi için en fazla bekleme
@@ -1682,7 +1684,7 @@ function Python-Kur {
         $k = Surec-Calis $py '-m pip install --user --disable-pip-version-check zstandard xxhash' -Gizli
         if ($k -ne 0 -or -not (Python-Parca-Var -Yenile)) { Yaz (T "Python parçaları kurulamadı; internet var mı? Elle: pip install zstandard xxhash" "Couldn't install the Python packages; are you online? By hand: pip install zstandard xxhash") $RenkTuruncu; Kurulum-Yenile; return }
     }
-    Yaz (T "Python hazır: 'Rose'a aktar' artık modların Rose sürümünü üretebilir." "Python is ready: 'Copy to Rose' can now make the Rose versions of your mods.") $RenkYesil
+    Yaz (T "Python hazır: 'Rose'a aktar' artık modların yerinde sürümünü üretebilir (efektler Rose'da da gelir)." "Python is ready: 'Copy to Rose' can now make the in-place versions of your mods (effects show in Rose too).") $RenkYesil
     Kurulum-Yenile
 }
 # Rose'un resmi sürümünü GitHub'dan indirir, özetini kontrol edip kurar (yönetici izni ister)
@@ -1720,6 +1722,74 @@ function Hepsini-Kur {
     if (-not (Rose-Kurulu)) { Rose-Kur }
     if (-not (Python-Bul) -or -not (Python-Parca-Var)) { Python-Kur }
     Kurulum-Yenile
+}
+# Modun "yerinde" sürümü (rose_yerinde.py; ayrıntı o dosyanın başında): Rose, skinin üstüne eklenen modda kostümün efekt
+# tablosunu moddan okumaz. Betik, modun efekt girdilerini oyunun zaten okuduğu dosyaların içine özgün adlarıyla yazar;
+# böylece yetenek efektleri Rose'da da gelir. Klasik skin dosyası (skin0.bin) EKLENMEZ. Oyunun güncel dosyalarını okur
+# (Game\DATA\FINAL\Champions) ve Python ister. Üretilen sürüm rose-yerinde\<slug>.fantome, yanında <slug>.json
+# (hangi kaynaktan ve hangi oyun sürümünde üretildi, sonuç, etkilenen öteki kostümler). Oyun yaması gelince yeniden üretilir.
+$RoseYerindeKlasoru = Join-Path $PSScriptRoot 'rose-yerinde'
+function Rose-Yerinde-Uret($kaynak, $hedef) {
+    # Dönüş: @{ Durum = 'tamam' | 'gereksiz' | <neden olmadığı>; Kostumler = <modun değiştirdiği paylaşılan dosyaların kostümleri> }
+    $betik = Join-Path $PSScriptRoot 'rose_yerinde.py'
+    $sampiyonlar = Yol $LolKlasoru 'Game\DATA\FINAL\Champions'
+    $kostumler = [Collections.Generic.List[int]]::new()
+    if (-not (Test-Path -LiteralPath $betik)) { return @{ Durum = 'rose_yerinde.py yok'; Kostumler = $kostumler } }
+    if (-not (Test-Path -LiteralPath $sampiyonlar)) { return @{ Durum = (T 'oyun dosyaları bulunamadı' 'game files not found'); Kostumler = $kostumler } }
+    [void](Python-Bul)
+    if (-not $script:PythonYolu) { return @{ Durum = (T 'Python kurulu değil' 'Python is not installed'); Kostumler = $kostumler } }
+    $gec = "$hedef.yeni"; $hataDosya = [IO.Path]::GetTempFileName(); $ciktiDosya = [IO.Path]::GetTempFileName()
+    $durum = ''
+    try {
+        [void](New-Item -ItemType Directory -Force (Split-Path -Parent $hedef))
+        $p = Start-Process -FilePath $script:PythonYolu -ArgumentList ('"{0}" "{1}" "{2}" "{3}"' -f $betik, $kaynak, $sampiyonlar, $gec) -WindowStyle Hidden -Wait -PassThru -RedirectStandardError $hataDosya -RedirectStandardOutput $ciktiDosya -ErrorAction Stop
+        if ($p.ExitCode -eq 0 -and (Test-Path -LiteralPath $gec)) {
+            Move-Item -LiteralPath $gec -Destination $hedef -Force; $durum = 'tamam'
+            try {
+                $o = $script:Json.DeserializeObject(([IO.File]::ReadAllText($ciktiDosya)).Trim())
+                foreach ($s in @($o.Keys)) { foreach ($d in @($o[$s]['degisen'])) { foreach ($k in @($d['kostumler'])) { if (-not $kostumler.Contains([int]$k)) { $kostumler.Add([int]$k) } } } }
+            } catch {}
+        }
+        elseif ($p.ExitCode -eq 3) { $durum = 'gereksiz' }
+        else {
+            try { $durum = [string](@(([IO.File]::ReadAllText($hataDosya)).Trim() -split "`r?`n") | Select-Object -Last 1) } catch {}
+            if (-not $durum) { $durum = "python kod $($p.ExitCode)" }
+        }
+    } catch { $durum = "$($_.Exception.Message)" }
+    finally { foreach ($y in $gec, $hataDosya, $ciktiDosya) { Remove-Item -LiteralPath $y -Force -ErrorAction SilentlyContinue } }
+    return @{ Durum = $durum; Kostumler = $kostumler }
+}
+# Aktarılacak mod için yerinde sürümü hazırlar (varsa ve güncelse eldekini kullanır).
+# Dönüş: @{ Dosya = <yerinde sürümün yolu ya da $null>; Iz = <kaynak özeti + oyun sürümü>; Kostumler; Not = <üretilemediyse neden> }
+function Rose-Yerinde-Hazirla($m, $kaynak, $kaynakOzet) {
+    $damga = '0'
+    try { $damga = [string](Get-Item -LiteralPath (Yol $LolKlasoru 'Game\League of Legends.exe')).LastWriteTimeUtc.Ticks } catch {}
+    $iz = "$kaynakOzet|$damga"
+    $dosya = Join-Path $RoseYerindeKlasoru "$($m.Slug).fantome"
+    $kayitYol = Join-Path $RoseYerindeKlasoru "$($m.Slug).json"
+    $kostumler = [Collections.Generic.List[int]]::new()
+    try {
+        if (Test-Path -LiteralPath $kayitYol) {
+            $k = $script:Json.DeserializeObject([IO.File]::ReadAllText($kayitYol))
+            if (($k -is [Collections.IDictionary]) -and "$($k['iz'])" -eq $iz) {
+                if ("$($k['durum'])" -eq 'gereksiz') { return @{ Dosya = $null; Iz = $iz; Kostumler = $kostumler; Not = '' } }
+                if ("$($k['durum'])" -eq 'tamam' -and (Test-Path -LiteralPath $dosya)) {
+                    foreach ($x in @($k['kostumler'])) { if ($null -ne $x) { $kostumler.Add([int]$x) } }
+                    return @{ Dosya = $dosya; Iz = $iz; Kostumler = $kostumler; Not = '' }
+                }
+            }
+        }
+    } catch {}
+    $u = Rose-Yerinde-Uret $kaynak $dosya
+    if ($u.Durum -ne 'tamam' -and $u.Durum -ne 'gereksiz') { return @{ Dosya = $null; Iz = $iz; Kostumler = $kostumler; Not = [string]$u.Durum } }
+    try {
+        $kayit = [Collections.Generic.Dictionary[string,object]]::new()
+        $kayit['iz'] = [string]$iz; $kayit['durum'] = [string]$u.Durum; $kayit['kostumler'] = [int[]]$u.Kostumler.ToArray()
+        [void](New-Item -ItemType Directory -Force $RoseYerindeKlasoru)
+        Json-Yaz $kayitYol $kayit
+    } catch {}
+    if ($u.Durum -eq 'gereksiz') { Remove-Item -LiteralPath $dosya -Force -ErrorAction SilentlyContinue; return @{ Dosya = $null; Iz = $iz; Kostumler = $kostumler; Not = '' } }
+    return @{ Dosya = $dosya; Iz = $iz; Kostumler = $u.Kostumler; Not = '' }
 }
 # Rose'da yetim kalan kopyaları kaldırır: bizim aktardığımız (riotPlusLtkId taşıyan) ama o kimliği artık LTK kütüphanesinde
 # olmayan kayıtlar. Bir mod LTK'da kaldırılıp yeniden eklenince yeni kimlik alır; eski kopya eşleşmediği için Rose'da kalır
@@ -1765,7 +1835,7 @@ function Rose-Aktar {
     $yetim = Rose-Yetim-Temizle $kok $gecerli    # not: @( ) ile sarmalanmaz; dönen dizi tek öğe sayılırdı
     if ($yetim -and $yetim.Count) { Yaz ((T "Rose'dan kaldırıldı (LTK'da artık yok, $($yetim.Count)): " "Removed from Rose (no longer in LTK, $($yetim.Count)): ") + ($yetim -join ', ')) $RenkSoluk }
     if (-not $script:LtkKutuphane.Modlar.Count) { Yaz (T "LTK'da aktarılacak mod yok." 'No mods in LTK to copy.') $RenkSoluk; Custom-Yenile; return }
-    $eklendi = @(); $vardi = 0; $paket = @(); $sampiyonsuz = 0; $hata = @()
+    $eklendi = @(); $vardi = 0; $paket = @(); $sampiyonsuz = 0; $hata = @(); $yanNot = @(); $uretimNot = ''
     foreach ($m in @($script:LtkKutuphane.Modlar)) {
         if ($m.Engelli) { continue }
         if (-not $m.Ana) { $sampiyonsuz++; continue }
@@ -1777,11 +1847,14 @@ function Rose-Aktar {
             # Modun LTK'daki dosyasının O ANKİ özeti. $m.Sha (library.json'daki sourceSha256) modun LTK'ya ilk eklendiği
             # andaki özettir; dosya LTK klasöründe aynı adla değiştirilince değişmez ve güncelleme atlanırdı (12 Kas).
             $kaynakOzet = [string](Get-FileHash -LiteralPath $kaynak -Algorithm SHA256).Hash.ToLowerInvariant()
-            # Mod olduğu gibi aktarılır ve yazdığı skinin üstünde seçilir (Rose'un kendi "mod ekle"si gibi). Moda klasik skin
-            # dosyası eklenmez: LTK öyle paketi reddediyor (19 Kas). Rose, bu yolla eklenen modda kostümün efekt tablosunu
-            # okumaz; modun dosyaların İÇİNDE yaptığı değişiklikler (doku, renk, yerinde değişen efekt) gelir, tabloyu
-            # değiştirerek bağladığı efektler gelmez. Modlar buna göre hazırlanır.
-            $bicim = 'ayni'; $kaynakDosya = $kaynak
+            # Mod yazdığı skinin üstünde seçilir (Rose'un kendi "mod ekle"si gibi); moda klasik skin dosyası eklenmez (LTK öyle
+            # paketi reddediyor, 19 Kas). Rose bu yolla eklenen modda kostümün efekt tablosunu okumaz; mod efektlerini tabloyla
+            # bağlıyorsa "yerinde" sürümü üretilip o aktarılır (Rose-Yerinde-Hazirla). Gerek yoksa ya da üretilemezse mod
+            # olduğu gibi aktarılır. $kaynakIz: aktarılan kopyanın neye göre güncel sayılacağı (yerinde sürümde oyun sürümü de girer).
+            $bicim = 'ayni'; $kaynakDosya = $kaynak; $kaynakIz = $kaynakOzet; $yanKostum = @()
+            $yer = Rose-Yerinde-Hazirla $m $kaynak $kaynakOzet
+            if ($yer.Dosya) { $kaynakDosya = $yer.Dosya; $bicim = 'yerinde'; $kaynakIz = $yer.Iz; $yanKostum = @($yer.Kostumler) }
+            elseif ($yer.Not) { $uretimNot = [string]$yer.Not }
             $klasor = Join-Path $kok "$([int]$m.Ana * 1000)"
             [void](New-Item -ItemType Directory -Force $klasor)
             $manYol = Join-Path $klasor 'rose_mod_targets.json'
@@ -1801,7 +1874,7 @@ function Rose-Aktar {
                     $gDosya = Join-Path $klasor "$gAd.fantome"
                     $gBicim = if ("$($g['riotPlusBicim'])") { "$($g['riotPlusBicim'])" } else { 'ayni' }
                     $gKaynak = "$($g['riotPlusKaynak'])"
-                    if ((Test-Path -LiteralPath $gDosya) -and $gBicim -eq $bicim -and $gKaynak -eq $kaynakOzet) { $var = $true }
+                    if ((Test-Path -LiteralPath $gDosya) -and $gBicim -eq $bicim -and $gKaynak -eq $kaynakIz) { $var = $true }
                     else {
                         # Eski aktarma (öteki biçimde ya da modun önceki hali): dosyası ve kaydı kaldırılır, yenisi konur
                         Remove-Item -LiteralPath $gDosya -Force -ErrorAction SilentlyContinue
@@ -1851,7 +1924,7 @@ function Rose-Aktar {
             $girdi['sourceHash'] = $ozet
             $girdi['riotPlusLtkId'] = [string]$m.Id
             $girdi['riotPlusBicim'] = [string]$bicim
-            $girdi['riotPlusKaynak'] = [string]$kaynakOzet
+            $girdi['riotPlusKaynak'] = [string]$kaynakIz
             $modlar[[string]$ad] = $girdi
             $man['version'] = [int]1
             if (-not $man.ContainsKey('championId')) { $man['championId'] = [int]$m.Ana }
@@ -1860,7 +1933,10 @@ function Rose-Aktar {
             Json-Yaz $manYol $man
             Move-Item -LiteralPath $gecici -Destination $hedef -Force; $gecici = $null
             try { [void][ModWad]::GorselCikar($kaynak, (Join-Path $klasor "$ad.png")) } catch {}   # Rose'un menüsündeki önizleme
-            $eklendi += "$($m.Ad) ($(Sampiyon-Adi $m.Ana))"
+            $eklendi += "$($m.Ad) ($(Sampiyon-Adi $m.Ana))$(if ($bicim -eq 'yerinde') { T ' [yerinde]' ' [in place]' })"
+            # Yerinde sürüm paylaşılan dosyaları değiştirdiyse aynı dosyayı kullanan öteki kostümlerde de modun efekti görünür
+            $oteki = @($yanKostum | Where-Object { @($m.Skinler) -notcontains $_ } | Sort-Object)
+            if ($oteki.Count) { $yanNot += "$($m.Ad): $($oteki -join ', ')" }
         } catch {
             $hata += "$($m.Ad): $($_.Exception.Message)"
             if ($gecici) { Remove-Item -LiteralPath $gecici -Force -ErrorAction SilentlyContinue }
@@ -1874,6 +1950,8 @@ function Rose-Aktar {
     if ($sampiyonsuz) { $notlar += T "$sampiyonsuz mod şampiyona bağlı değil (VFX, harita gibi): onu Rose'un LoL içindeki mod panelinden ekle" "$sampiyonsuz aren't tied to a champion (VFX, map...): add those from Rose's mod panel inside LoL" }
     if ($notlar.Count) { Yaz (($notlar -join '; ') + '.') $RenkSoluk }
     if ($hata.Count) { Yaz ((T 'Aktarılamadı: ' "Couldn't copy: ") + ($hata -join '; ')) $RenkTuruncu }
+    if ($yanNot.Count) { Yaz ((T "[yerinde] modlarda efektler şampiyonun şu numaralı kostümlerinde de değişir (aynı dosyayı paylaşıyorlar; 0 = klasik): " "[in place] mods also change the effects on these skin numbers of the champion (shared files; 0 = base): ") + ($yanNot -join '; ')) $RenkSoluk }
+    if ($uretimNot) { Yaz (T "Bazı modların yerinde sürümü üretilemedi ($uretimNot): onlar olduğu gibi aktarıldı; efektlerini tabloyla bağlayan modda yetenek efektleri özgün kalır. Kurulum sayfasından Python'u kurup yeniden aktar." "Couldn't make the in-place version of some mods ($uretimNot): they were copied as is; a mod that links its effects through the table keeps the original ability effects. Install Python from the Setup page and copy again.") $RenkTuruncu }
     if ($eklendi.Count) { Yaz (T "Rose'da: her modu yazdığı skinin üstüne gelip custom menüsünden seç (klasik skin modları klasik skinin üstünde)." "In Rose: pick each mod from the custom menu on the skin it targets (base-skin mods on the base skin).") $RenkSoluk }
     Custom-Yenile
 }
